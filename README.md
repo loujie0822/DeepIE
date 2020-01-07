@@ -1,11 +1,11 @@
-# Information_Extraction_based_Deep_Learning
-InfoExtract_Zoo
+# InfoExtract_Zoo: Information Extraction Zoo based Deep Learning 
 
-Chinese Information Extraction ToolKit based Deep Learning 
 
 > 写在前面
->
-> 本开源项目旨在介绍「基于深度学习技术的信息抽取」
+
+本开源项目旨在介绍「基于深度学习技术的信息抽取」
+
+
 
 现实世界中80%以上的信息是以自然语言文本形式记载的非结构化数据，如何降低用户获取这些非结构化信息的难度和成本至关重要。信息抽取技术就是解决这类问题的，它能够自动分析非结构化的文本数据，从中挖掘有价值的知识并以结构化的形式呈现给用户。
 
