@@ -6,7 +6,7 @@ settings.py
 
 instance/
 data/
-
+pyscripts/
 .pytest_cache/
 .coverage
 
