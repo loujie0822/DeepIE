@@ -3,7 +3,7 @@ import argparse
 import logging
 import os
 
-from run.attribute_extract.mpn.data import Reader, Vocabulary, config, Feature
+from run.attribute_extract.mpn.data_loader import Reader, Vocabulary, config, Feature
 from run.attribute_extract.mpn.train import Trainer
 from utils.file_util import save, load
 

@@ -63,6 +63,7 @@ def get_args():
     parser.add_argument('--pos_size', type=int, default=62)
 
     parser.add_argument('--hidden_size', type=int, default=150)
+    parser.add_argument('--bert_hidden_size', type=int, default=768)
     parser.add_argument('--num_layers', type=int, default=2)
     parser.add_argument('--dropout', type=int, default=0.5)
     parser.add_argument('--rnn_encoder', type=str, default='lstm', help="must choose in blow: lstm or gru")
@@ -127,10 +128,8 @@ def bulid_dataset(args, reader, vocab, debug=False):
     train_examples = train_examples[:10] if debug else train_examples
     dev_examples = dev_examples[:10] if debug else dev_examples
 
-    train_data_set = convert_examples_features(train_examples, entity_type=args.entity_type,
-                                               data_type='train')
-    dev_data_set = convert_examples_features(dev_examples, entity_type=args.entity_type,
-                                             data_type='dev')
+    train_data_set = convert_examples_features(train_examples, data_type='train')
+    dev_data_set = convert_examples_features(dev_examples, data_type='dev')
     train_data_loader = train_data_set.get_dataloader(args.train_batch_size, shuffle=True, pin_memory=args.pin_memory)
     dev_data_loader = dev_data_set.get_dataloader(args.train_batch_size)
 
@@ -138,6 +137,7 @@ def bulid_dataset(args, reader, vocab, debug=False):
     eval_examples = train_examples, dev_examples
 
     return eval_examples, data_loaders, char_emb
+
 
 def main():
     args = get_args()
@@ -159,8 +159,8 @@ def main():
     if args.train_mode == "train":
         trainer.train(args)
     elif args.train_mode == "eval":
-        trainer.resume(args)
-        trainer.eval_data_set("train")
+        # trainer.resume(args)
+        # trainer.eval_data_set("train")
         trainer.eval_data_set("dev")
     elif args.train_mode == "resume":
         # trainer.resume(args)

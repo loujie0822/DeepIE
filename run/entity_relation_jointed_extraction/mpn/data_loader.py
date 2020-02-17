@@ -93,8 +93,9 @@ class Reader(object):
         return self._read(filename, data_type)
 
     def _data_process(self, filename, data_type='train'):
+        output_data = list()
         with codecs.open(filename, 'r') as f:
-            output_data = list()
+            gold_num = 0
             for line in tqdm(f):
                 data_json = json.loads(line.strip())
                 text = data_json['text'].lower()
@@ -108,12 +109,13 @@ class Reader(object):
                     o_start, o_end = find_position(object_name, text)
 
                     if text[s_start:s_end] != subject_name:
-                        print(subject_name)
+                        # print(subject_name)
                         subject_name = spo['subject'].lower().replace('》', '').replace('《', '')
                         s_start, s_end = find_position(subject_name, text)
                     if s_start != -1 and o_start != -1:
                         sub_ent_list.append((subject_name, s_start, s_end))
                         spo_list.append((subject_name, spo['predicate'], object_name))
+
                         if subject_name not in sub_po_dict:
                             sub_po_dict[subject_name] = {}
                             sub_po_dict[subject_name]['sub_pos'] = [s_start, s_end]
@@ -127,10 +129,12 @@ class Reader(object):
                 text_spo['sub_po_dict'] = sub_po_dict
                 text_spo['spo_list'] = list(set(spo_list))
                 text_spo['sub_ent_list'] = list(set(sub_ent_list))
+                gold_num += len(set(spo_list))
                 output_data.append(text_spo)
 
         if data_type == 'train':
             return self._convert_train_data(output_data)
+        # print(f'total gold num is {gold_num}')
         return output_data
 
     @staticmethod
@@ -300,10 +304,10 @@ class Feature(object):
             return self.token2idx_dict[token]
         return self.token2idx_dict["<OOV>"]
 
-    def __call__(self, examples, entity_type, data_type):
+    def __call__(self, examples, data_type):
 
         if self.bert:
-            return self.convert_examples_to_bert_features(examples, entity_type, data_type)
+            return self.convert_examples_to_bert_features(examples, data_type)
         else:
             return self.convert_examples_to_features(examples, data_type)
 
@@ -328,13 +332,15 @@ class Feature(object):
                 s1[start] = 1.0
                 s2[end - 1] = 1.0
 
+            for i, token in enumerate(example.context):
+                passage_id[i] = self.token2wid(token)
+
             if data_type == 'train':
                 sub_start, sub_end = example.sub_pos[0], example.sub_pos[1]
                 for i, token in enumerate(example.context):
                     if sub_start <= i < sub_end:
                         # token = "<MASK>"
                         token_type_id[i] = 1
-                    passage_id[i] = self.token2wid(token)
                     pos_start_id[i] = example.relative_pos_start[i]
                     pos_end_id[i] = example.relative_pos_end[i]
 
@@ -355,36 +361,41 @@ class Feature(object):
         logging.info("Built instances is Completed")
         return SPODataset(examples2features, predict_num=len(BAIDU_RELATION), data_type=data_type)
 
-    def convert_examples_to_bert_features(self, examples, entity_type, data_type):
+    def convert_examples_to_bert_features(self, examples, data_type):
 
         logging.info("Processing {} examples...".format(data_type))
 
         examples2features = list()
         for index, example in enumerate(examples):
 
-            gold_attr_list = example.gold_attr_list
-            ent_start, ent_end = example.entity_position[0], example.entity_position[1]
             segment_id = np.zeros(len(example.context) + 2, dtype=np.int)
             token_type_id = np.zeros(len(example.context) + 2, dtype=np.int)
             pos_start_id = np.zeros(len(example.context) + 2, dtype=np.int)
             pos_end_id = np.zeros(len(example.context) + 2, dtype=np.int)
+            s1 = np.zeros(len(example.context) + 2, dtype=np.float)
+            s2 = np.zeros(len(example.context) + 2, dtype=np.float)
+
+            for (_, start, end) in example.sub_entity_list:
+                if start >= len(example.context) or end >= len(example.context):
+                    continue
+                s1[start + 1] = 1.0
+                s2[end] = 1.0
 
             tokens = ["[CLS]"]
-            raw_tokens = ["[CLS]"]
             for i, token in enumerate(example.context):
-                raw_tokens.append(token)
-                if ent_start <= i < ent_end:
-                    # token_type_id[i + 1] = 1
-                    # segment_id[i + 1] = 1
-                    token = '[unused1]'
                 tokens.append(token)
-                pos_start_id[i + 1] = example.pos_start[i]
-                pos_end_id[i + 1] = example.pos_end[i]
-
             tokens.append("[SEP]")
-            raw_tokens.append("[SEP]")
             passage_id = self.tokenizer.convert_tokens_to_ids(tokens)
-            example.bert_tokens = raw_tokens
+            example.bert_tokens = tokens
+
+            if data_type == 'train':
+                sub_start, sub_end = example.sub_pos[0], example.sub_pos[1]
+                for i, token in enumerate(example.context):
+                    if sub_start <= i < sub_end:
+                        token_type_id[i + 1] = 1
+                    pos_start_id[i + 1] = example.relative_pos_start[i]
+                    pos_end_id[i + 1] = example.relative_pos_end[i]
+
             examples2features.append(
                 InputFeature(
                     p_id=index,
@@ -393,11 +404,13 @@ class Feature(object):
                     pos_start_id=pos_start_id,
                     pos_end_id=pos_end_id,
                     segment_id=segment_id,
-                    po_label=gold_attr_list
+                    po_label=example.po_list,
+                    s1=s1,
+                    s2=s2
                 ))
 
         logging.info("Built instances is Completed")
-        return SPODataset(examples2features, predict_num=len(BAIDU_RELATION), use_bert=True)
+        return SPODataset(examples2features, predict_num=len(BAIDU_RELATION), use_bert=True,data_type=data_type)
 
 
 class SPODataset(Dataset):
@@ -445,8 +458,8 @@ class SPODataset(Dataset):
                 s2_tensor, _ = padding(s2, is_float=True, batch_first=batch_first)
                 po1_tensor, po2_tensor = spo_padding(passages, label, class_num=self.predict_num, is_float=True,
                                                      use_bert=self.use_bert)
-                return p_ids, passages_tensor, segment_tensor, token_type_tensor, pos_start_tensor, pos_end_tensor, \
-                       s1_tensor, s2_tensor, po1_tensor, po2_tensor
+                return p_ids, passages_tensor, segment_tensor, token_type_tensor, s1_tensor, s2_tensor, po1_tensor, \
+                       po2_tensor
             else:
                 p_ids, passages, segment_ids = zip(*examples)
                 p_ids = torch.tensor([p_id for p_id in p_ids], dtype=torch.long)
