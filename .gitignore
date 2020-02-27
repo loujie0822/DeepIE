@@ -11,7 +11,7 @@ shell/
 pyscripts/
 .pytest_cache/
 .coverage
-
+run/entity_relation_jointed_extraction/drug_jointed_extract/
 dist/
 build/
 *.egg-info/
