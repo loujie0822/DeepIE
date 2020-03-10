@@ -1,3 +1,9 @@
+BAIDU_ENTITY = {
+    'O': 0,
+    'B': 1,
+    'I': 2,
+}
+
 BAIDU_RELATION = {
     "朝代": 0,
     "人口数量": 1,
@@ -49,3 +55,13 @@ BAIDU_RELATION = {
     "创始人": 47,
     "导演": 48
 }
+
+BAIDU_BIES = {'PAD': 0, 'O': 1}
+BIES = ['B', 'I']
+count = 2
+for key, value in BAIDU_RELATION.items():
+    for tag in BIES:
+        BAIDU_BIES.update({tag + '-' + key: count})
+        count += 1
+# print(BAIDU_BIES)
+# print(len(BAIDU_BIES))
