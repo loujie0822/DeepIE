@@ -5,6 +5,7 @@ from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 def set_optimizer(args, model, train_steps=None):
     if args.use_bert:
+        print('using BertAdam')
         param_optimizer = list(model.named_parameters())
         param_optimizer = [n for n in param_optimizer if 'pooler' not in n[0]]
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
@@ -20,6 +21,7 @@ def set_optimizer(args, model, train_steps=None):
                              t_total=train_steps)
         return optimizer
     else:
+        print('using optim Adam')
         parameters_trainable = list(filter(lambda p: p.requires_grad, model.parameters()))
         optimizer = optim.Adam(parameters_trainable, lr=args.learning_rate)
     return optimizer

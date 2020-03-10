@@ -1,89 +1,62 @@
+# _*_ coding:utf-8 _*_
 import warnings
 
 import numpy as np
 import torch
 import torch.nn as nn
-from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
 
-from layers.encoders.rnns.stacked_rnn import StackedBRNN
+from layers.encoders.transformers.bert.bert_model import BertModel
 
 warnings.filterwarnings("ignore")
-
-
-class SentenceEncoder(nn.Module):
-    def __init__(self, args, input_size):
-        super(SentenceEncoder, self).__init__()
-        rnn_type = nn.LSTM if args.rnn_encoder == 'lstm' else nn.GRU
-        self.encoder = StackedBRNN(
-            input_size=input_size,
-            hidden_size=args.hidden_size,
-            num_layers=args.num_layers,
-            dropout_rate=args.dropout,
-            dropout_output=True,
-            concat_layers=False,
-            rnn_type=rnn_type,
-            padding=True
-        )
-
-    def forward(self, input, mask):
-        return self.encoder(input, mask)
+from torch.nn.modules.transformer import TransformerEncoder, TransformerEncoderLayer
 
 
 class EntityNET(nn.Module):
     """
-        EntityNET : entity extraction using pointer network
+        ERENet : entity relation extraction
     """
 
-    def __init__(self, args, char_emb):
+    def __init__(self, args):
         super(EntityNET, self).__init__()
 
-        if char_emb is not None:
-            self.char_emb = nn.Embedding.from_pretrained(torch.tensor(char_emb, dtype=torch.float32), freeze=False,
-                                                         padding_idx=0)
-        else:
-            self.char_emb = nn.Embedding(num_embeddings=args.vocab_size, embedding_dim=args.char_emb_size,
-                                         padding_idx=0)
+        self.sb1 = nn.Linear(args.bert_hidden_size, 1)
+        self.sb2 = nn.Linear(args.bert_hidden_size, 1)
 
-        self.sentence_encoder = SentenceEncoder(args, args.word_emb_size)
-        self.s1 = nn.Linear(args.hidden_size * 2, 1)
-        self.s2 = nn.Linear(args.hidden_size * 2, 1)
+    def forward(self, sent_encoder, q_ids=None, eval_file=None, passages=None, s1=None, s2=None, is_eval=False):
 
-    def forward(self, q_ids=None, eval_file=None, passages=None, s1=None, s2=None, is_eval=False):
-        mask = passages.eq(0)
         sequence_mask = passages != 0
-
-        char_emb = self.char_emb(passages)
-
-        sent_encoder = self.sentence_encoder(char_emb, mask)
-
-        s1_ = self.s1(sent_encoder).squeeze()
-        s2_ = self.s2(sent_encoder).squeeze()
+        sb1 = self.sb1(sent_encoder).squeeze()
+        sb2 = self.sb2(sent_encoder).squeeze()
 
         if not is_eval:
             loss_fct = nn.BCEWithLogitsLoss(reduction='none')
 
-            sb1_loss = loss_fct(s1_, s1)
+            sb1_loss = loss_fct(sb1, s1)
             s1_loss = torch.sum(sb1_loss * sequence_mask.float()) / torch.sum(sequence_mask.float())
 
-            s2_loss = loss_fct(s2_, s2)
+            s2_loss = loss_fct(sb2, s2)
             s2_loss = torch.sum(s2_loss * sequence_mask.float()) / torch.sum(sequence_mask.float())
 
             ent_loss = s1_loss + s2_loss
-            return sent_encoder, ent_loss
+            return ent_loss
         else:
-            answer_list = self.predict(eval_file, q_ids, s1_, s2_)
-            return sent_encoder, answer_list
+            answer_list = self.predict(eval_file, q_ids, sb1, sb2)
+            return answer_list
 
-    def predict(self, eval_file, q_ids=None, s1=None, s2=None):
-        sub_ans_list = list()
+    def predict(self, eval_file, q_ids=None, sb1=None, sb2=None):
+        answer_list = list()
         for qid, p1, p2 in zip(q_ids.cpu().numpy(),
-                               s1.cpu().numpy(),
-                               s2.cpu().numpy()):
+                               sb1.cpu().numpy(),
+                               sb2.cpu().numpy()):
+
+            context = eval_file[qid].context
             start = None
             end = None
             threshold = 0.0
             positions = list()
-            for idx in range(0, len(eval_file[qid].context)):
+            for idx in range(0, len(context) + 1):
+                if idx == 0:
+                    continue
                 if p1[idx] > threshold and start is None:
                     start = idx
                 if p2[idx] > threshold and end is None:
@@ -92,9 +65,9 @@ class EntityNET(nn.Module):
                     positions.append((start, end + 1))
                     start = None
                     end = None
-            sub_ans_list.append(positions)
+            answer_list.append(positions)
 
-        return sub_ans_list
+        return answer_list
 
 
 class RelNET(nn.Module):
@@ -104,76 +77,89 @@ class RelNET(nn.Module):
 
     def __init__(self, args, spo_conf):
         super(RelNET, self).__init__()
-        self.token_entity_emb = nn.Embedding(num_embeddings=2, embedding_dim=args.entity_emb_size,
+        self.token_entity_emb = nn.Embedding(num_embeddings=2, embedding_dim=args.bert_hidden_size,
                                              padding_idx=0)
-        self.sentence_encoder = SentenceEncoder(args, args.word_emb_size)
-        self.transformer_encoder_layer = TransformerEncoderLayer(args.hidden_size * 2, args.nhead)
-
-        self.transformer_encoder = TransformerEncoder(self.transformer_encoder_layer, args.transformer_layers)
+        self.encoder_layer = TransformerEncoderLayer(args.bert_hidden_size, args.nhead)
+        self.transformer_encoder = TransformerEncoder(self.encoder_layer, args.transformer_layers)
 
         self.classes_num = len(spo_conf)
-        self.po1 = nn.Linear(args.hidden_size * 2, self.classes_num)
-        self.po2 = nn.Linear(args.hidden_size * 2, self.classes_num)
+        self.ob1 = nn.Linear(args.bert_hidden_size, self.classes_num)
+        self.ob2 = nn.Linear(args.bert_hidden_size, self.classes_num)
 
-    def forward(self, passages=None, sent_encoder=None, token_type_id=None, po1=None, po2=None, is_eval=False):
+    def forward(self, passages=None, sent_encoder=None, posit_ids=None, o1=None, o2=None, is_eval=False):
         mask = passages.eq(0)
-        sequence_mask = passages != 0
 
-        subject_encoder = sent_encoder + self.token_entity_emb(token_type_id)
-        sent_sub_aware_encoder = self.sentence_encoder(subject_encoder, mask).transpose(1, 0)
+        subject_encoder = sent_encoder + self.token_entity_emb(posit_ids)
 
-        transformer_encoder = self.transformer_encoder(sent_sub_aware_encoder, src_key_padding_mask=mask).transpose(0,
-                                                                                                                    1)
+        subject_encoder = torch.transpose(subject_encoder, 1, 0)
+        transformer_encoder = self.transformer_encoder(subject_encoder, src_key_padding_mask=mask)
+        transformer_encoder = torch.transpose(transformer_encoder, 0, 1)
 
-        po1_ = self.po1(transformer_encoder)
-        po2_ = self.po2(transformer_encoder)
+        po1 = self.ob1(transformer_encoder)
+        po2 = self.ob2(transformer_encoder)
 
         if not is_eval:
             loss_fct = nn.BCEWithLogitsLoss(reduction='none')
 
-            po1_loss = loss_fct(po1_, po1)
-            po1_loss = torch.sum(po1_loss, 2)
-            po1_loss = torch.sum(po1_loss * sequence_mask.float()) / torch.sum(sequence_mask.float())
+            sequence_mask = passages != 0
 
-            po2_loss = loss_fct(po2_, po2)
-            po2_loss = torch.sum(po2_loss, 2)
-            po2_loss = torch.sum(po2_loss * sequence_mask.float()) / torch.sum(sequence_mask.float())
+            s1_loss = loss_fct(po1, o1)
+            s1_loss = torch.sum(s1_loss, 2)
+            s1_loss = torch.sum(s1_loss * sequence_mask.float()) / torch.sum(sequence_mask.float()) / self.classes_num
 
-            rel_loss = po1_loss + po2_loss
+            s2_loss = loss_fct(po2, o2)
+            s2_loss = torch.sum(s2_loss, 2)
+            s2_loss = torch.sum(s2_loss * sequence_mask.float()) / torch.sum(sequence_mask.float()) / self.classes_num
+
+            rel_loss = s1_loss + s2_loss
 
             return rel_loss
 
         else:
-            po1 = nn.Sigmoid()(po1_)
-            po2 = nn.Sigmoid()(po2_)
+            po1 = nn.Sigmoid()(po1)
+            po2 = nn.Sigmoid()(po2)
             return po1, po2
 
 
 class ERENet(nn.Module):
     """
-        ERENet : entity relation jointed extraction with Multi-label Pointer Network(MPN) based Entity-aware
+        ERENet : entity relation extraction
     """
 
-    def __init__(self, args, char_emb, spo_conf):
+    def __init__(self, args, spo_conf):
         super(ERENet, self).__init__()
         print('joint entity relation extraction')
-        self.entity_extraction = EntityNET(args, char_emb)
+        self.bert_encoder = BertModel.from_pretrained(args.bert_model)
+        self.entity_extraction = EntityNET(args)
         self.rel_extraction = RelNET(args, spo_conf)
 
     def forward(self, q_ids=None, eval_file=None, passages=None, token_type_ids=None, segment_ids=None, s1=None,
                 s2=None, po1=None, po2=None, is_eval=False):
 
+        sequence_mask = passages != 0
+        sent_encoder, _ = self.bert_encoder(passages, token_type_ids=segment_ids, attention_mask=sequence_mask,
+                                            output_all_encoded_layers=False)
+
         if not is_eval:
-            sent_encoder, ent_loss = self.entity_extraction(passages=passages, s1=s1, s2=s2, is_eval=is_eval)
-            rel_loss = self.rel_extraction(passages=passages, sent_encoder=sent_encoder, token_type_id=token_type_ids,
-                                           po1=po1, po2=po2, is_eval=False)
+            # entity_extraction
+            ent_loss = self.entity_extraction(sent_encoder, passages=passages, s1=s1, s2=s2,
+                                              is_eval=is_eval)
+
+            # rel_extraction
+            rel_loss = self.rel_extraction(passages=passages, sent_encoder=sent_encoder, posit_ids=token_type_ids,
+                                           o1=po1,
+                                           o2=po2, is_eval=False)
+
+            # add total loss
             total_loss = ent_loss + rel_loss
 
             return total_loss
+
+
         else:
 
-            sent_encoder, answer_list = self.entity_extraction(q_ids=q_ids, eval_file=eval_file,
-                                                               passages=passages, is_eval=is_eval)
+            answer_list = self.entity_extraction(sent_encoder, q_ids=q_ids, eval_file=eval_file,
+                                                 passages=passages, is_eval=is_eval)
             start_list, end_list = list(), list()
             qid_list, pass_list, posit_list, sent_list = list(), list(), list(), list()
             for i, ans_list in enumerate(answer_list):
@@ -201,7 +187,6 @@ class ERENet(nn.Module):
                 sent_list.append(sent_tensor)
 
             if len(qid_list) == 0:
-                # print('len(qid_list)==0:')
                 qid_tensor = torch.tensor([-1, -1], dtype=torch.long).to(sent_encoder.device)
                 return qid_tensor, qid_tensor, qid_tensor, qid_tensor, qid_tensor
 
@@ -225,12 +210,11 @@ class ERENet(nn.Module):
 
                 if passages.size(0) == 1:
                     flag = True
-                    # print('flag = True**********')
                     passages = passages.expand(2, passages.size(1))
                     sent_encoder = sent_encoder.expand(2, sent_encoder.size(1), sent_encoder.size(2))
                     posit_ids = posit_ids.expand(2, posit_ids.size(1))
 
-                po1, po2 = self.rel_extraction(passages=passages, sent_encoder=sent_encoder, token_type_id=posit_ids,
+                po1, po2 = self.rel_extraction(passages=passages, sent_encoder=sent_encoder, posit_ids=posit_ids,
                                                is_eval=is_eval)
                 if flag:
                     po1 = po1[1, :, :].unsqueeze(0)

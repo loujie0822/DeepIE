@@ -286,7 +286,7 @@ def convert_pointer_net_contour(eval_file, q_ids, po1, po2, id2rel, use_bert=Fal
                 if _start <= _end < len(context) and _attr_type_id_start == _attr_type_id_end:
                     _attr_value = ''.join(context[_start: _end + 1]) if use_bert else context[_start: _end + 1]
                     _attr_type = id2rel[_attr_type_id_start]
-                    _attr = _attr_type + '@' + _attr_value
+                    _attr = _attr_type + '@' + _attr_value+str(_start)+'-'+str(_end + 1)
                     answers.append(_attr)
                     break
 

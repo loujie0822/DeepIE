@@ -103,8 +103,8 @@ class Reader(object):
 
                 for spo in data_json['spo_list']:
                     # TODO .strip('《》').strip()
-                    subject_name = spo['subject'].lower().strip('《》').strip()
-                    object_name = spo['object'].lower().strip('《》').strip()
+                    subject_name = spo['subject'].lower()
+                    object_name = spo['object'].lower()
                     s_start, s_end = find_position(subject_name, text)
                     o_start, o_end = find_position(object_name, text)
 

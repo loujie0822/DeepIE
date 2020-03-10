@@ -30,8 +30,7 @@ config = {
     },
     'oncology_drug': {
         '药物_剂量': 0,
-        '药物_给药日': 1,
-        '药物_给药方式': 2,
+        '药物_给药方式': 1,
     },
     'yingxiang_bingzao': {
         "病灶部位_异常描述因子": 0,
@@ -171,7 +170,9 @@ class Reader(object):
                     attr_type=attr_type,
                     attr_type_id=self.entity_config[attr_type]
                 ))
-            gold_answer = [attr.attr_type + '@' + attr.value for attr in gold_attr_list]
+            gold_answer = [
+                attr.attr_type + '@' + attr.value + str(attr.value_pos_start) + '-' + str(attr.value_pos_end + 1)
+                for attr in gold_attr_list]
 
             examples.append(
                 Example(
@@ -382,7 +383,7 @@ class AttributeMPNDataset(Dataset):
             segment_tensor, _ = padding(segment_ids, is_float=False, batch_first=batch_first)
             o1_tensor, o2_tensor = mpn_padding(passages, label, class_num=self.attribute_num, is_float=True,
                                                use_bert=self.use_bert)
-            return p_ids, passages_tensor, token_type_tensor, segment_tensor, pos_start_tensor,pos_end_tensor,o1_tensor, o2_tensor
+            return p_ids, passages_tensor, token_type_tensor, segment_tensor, pos_start_tensor, pos_end_tensor, o1_tensor, o2_tensor
 
         return partial(collate)
 
