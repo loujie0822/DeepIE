@@ -10,7 +10,8 @@ from tqdm import tqdm
 
 import models.spo_net.multi_pointer_net as mpn
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
-
+from warnings import simplefilter
+simplefilter(action='ignore', category=FutureWarning)
 logger = logging.getLogger(__name__)
 
 
@@ -51,7 +52,8 @@ class Trainer(object):
         self.model = mpn.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
-        # self.resume(args)
+        if args.train_mode == "eval":
+            self.resume(args)
         logging.info('total gpu num is {}'.format(self.n_gpu))
         if self.n_gpu > 1:
             self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
@@ -274,5 +276,5 @@ class Trainer(object):
                 raise ValueError('error in answer_dict ')
             else:
                 answer_dict[qid][0].append(
-                    self.tokenizer.decode(token_ids[subject[0]:subject[1] + 1], tokens[subject[0]:subject[1] + 1]))
+                    self.tokenizer.decode(token_ids[subject[0]:subject[1] + 1]).replace(' ', ''))
                 answer_dict[qid][1].extend(po_predict)
