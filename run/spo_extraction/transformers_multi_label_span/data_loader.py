@@ -82,7 +82,7 @@ class Reader(object):
                 p_id += 1
                 data_json = json.loads(line.strip())
 
-                text = data_json['text'].lower().replace(' ', '')
+                text = data_json['text'].lower()
                 sub_po_dict, sub_ent_list, spo_list = dict(), list(), list()
 
                 for spo in data_json['spo_list']:
