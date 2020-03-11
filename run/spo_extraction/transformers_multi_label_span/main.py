@@ -3,6 +3,7 @@ import argparse
 import logging
 import os
 import random
+import warnings
 
 import numpy as np
 import torch
@@ -12,6 +13,8 @@ from config import spo_config_v1, spo_config_v2
 from run.spo_extraction.transformers_multi_label_span.data_loader import Reader, Feature
 from run.spo_extraction.transformers_multi_label_span.train import Trainer
 from utils.file_util import save, load
+from warnings import simplefilter
+simplefilter(action='ignore', category=FutureWarning)
 
 logger = logging.getLogger()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
