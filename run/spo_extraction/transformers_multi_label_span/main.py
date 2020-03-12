@@ -126,7 +126,7 @@ def main():
 
     spo_conf = spo_config_v1.BAIDU_RELATION if args.baidu_spo_version == 'v1' else spo_config_v2.BAIDU_RELATION
 
-    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, Reader(), debug=False)
+    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, Reader(), debug=True)
     trainer = Trainer(args, data_loaders, eval_examples, spo_conf=spo_conf,tokenizer=tokenizer)
 
     if args.train_mode == "train":
