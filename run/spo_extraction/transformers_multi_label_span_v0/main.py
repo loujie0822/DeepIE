@@ -3,17 +3,17 @@ import argparse
 import logging
 import os
 import random
-from warnings import simplefilter
+import warnings
 
 import numpy as np
 import torch
 from transformers import BertTokenizer
 
 from config import spo_config_v1, spo_config_v2
-from run.spo_extraction.transformers_multi_label_span.data_loader_v2 import Reader, Feature
-from run.spo_extraction.transformers_multi_label_span.train import Trainer
+from run.spo_extraction.transformers_multi_label_span_v0.data_loader import Reader, Feature
+from run.spo_extraction.transformers_multi_label_span_v0.train import Trainer
 from utils.file_util import save, load
-
+from warnings import simplefilter
 simplefilter(action='ignore', category=FutureWarning)
 
 logger = logging.getLogger()
@@ -68,11 +68,11 @@ def get_args():
     parser.add_argument('--bidirectional', type=bool, default=True)
     parser.add_argument('--pin_memory', type=bool, default=False)
     args = parser.parse_args()
-    args.cache_data = args.input + '/bert_cache_data_{}/'.format(str(args.max_len))
+    args.cache_data = args.input + '/char_bert_cache_data/'
     return args
 
 
-def bulid_dataset(args, spo_config, reader,tokenizer, debug=False):
+def bulid_dataset(args, spo_config, reader, debug=False):
     train_src = args.input + "/train_data.json"
     dev_src = args.input + "/dev_data.json"
 
@@ -85,12 +85,13 @@ def bulid_dataset(args, spo_config, reader,tokenizer, debug=False):
         save(train_examples_file, train_examples, message="train examples")
         save(dev_examples_file, dev_examples, message="dev examples")
     else:
-        logging.info('loading train cache_data {}'.format(train_examples_file))
-        logging.info('loading dev cache_data {}'.format(dev_examples_file))
         train_examples, dev_examples = load(train_examples_file), load(dev_examples_file)
 
         logging.info('train examples size is {}'.format(len(train_examples)))
         logging.info('dev examples size is {}'.format(len(dev_examples)))
+
+    tokenizer = BertTokenizer.from_pretrained(args.bert_model,
+                                              do_lower_case=True)
 
     convert_examples_features = Feature(max_len=args.max_len, spo_config=spo_config, tokenizer=tokenizer)
 
@@ -124,10 +125,9 @@ def main():
     logger.info("** ** * bulid dataset ** ** * ")
 
     spo_conf = spo_config_v1.BAIDU_RELATION if args.baidu_spo_version == 'v1' else spo_config_v2.BAIDU_RELATION
-    tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
-    reader = Reader(spo_conf,tokenizer, max_seq_length=args.max_len)
-    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader,tokenizer, debug=False)
-    trainer = Trainer(args, data_loaders, eval_examples, spo_conf=spo_conf, tokenizer=tokenizer)
+
+    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, Reader(), debug=False)
+    trainer = Trainer(args, data_loaders, eval_examples, spo_conf=spo_conf,tokenizer=tokenizer)
 
     if args.train_mode == "train":
         trainer.train(args)

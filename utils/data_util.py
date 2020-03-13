@@ -5,6 +5,7 @@ import numpy as np
 import torch
 
 
+
 def is_string(s):
     """判断是否是字符串
     """
