@@ -2,7 +2,6 @@
 import logging
 import sys
 import time
-from warnings import simplefilter
 
 import numpy as np
 import torch
@@ -11,7 +10,7 @@ from tqdm import tqdm
 
 import models.spo_net.multi_pointer_net as mpn
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
-
+from warnings import simplefilter
 simplefilter(action='ignore', category=FutureWarning)
 logger = logging.getLogger(__name__)
 
@@ -28,9 +27,9 @@ class Trainer(object):
 
             def __init__(self, spo):
                 self.spox = (
-                    tuple(tokenizer.tokenize(spo[0])),
+                    tuple(tokenizer.tokenize(spo[0].replace(' ', ''))),
                     spo[1],
-                    tuple(tokenizer.tokenize(spo[2])),
+                    tuple(tokenizer.tokenize(spo[2].replace(' ', ''))),
                 )
 
             def __hash__(self):
@@ -113,20 +112,20 @@ class Trainer(object):
                                                                            epoch, current_loss))
                     global_loss = 0.0
 
-                # if step % 500 == 0 and epoch >= 6:
-                #     res_dev = self.eval_data_set("dev")
-                #     if res_dev['f1'] >= best_f1:
-                #         best_f1 = res_dev['f1']
-                #         logging.info("** ** * Saving fine-tuned model ** ** * ")
-                #         model_to_save = self.model.module if hasattr(self.model,
-                #                                                      'module') else self.model  # Only save the model it-self
-                #         output_model_file = args.output + "/pytorch_model.bin"
-                #         torch.save(model_to_save.state_dict(), str(output_model_file))
-                #         patience_stop = 0
-                #     else:
-                #         patience_stop += 1
-                #     if patience_stop >= args.patience_stop:
-                #         return
+                if step % 500 == 0 and epoch >= 4:
+                    res_dev = self.eval_data_set("dev")
+                    if res_dev['f1'] >= best_f1:
+                        best_f1 = res_dev['f1']
+                        logging.info("** ** * Saving fine-tuned model ** ** * ")
+                        model_to_save = self.model.module if hasattr(self.model,
+                                                                     'module') else self.model  # Only save the model it-self
+                        output_model_file = args.output + "/pytorch_model.bin"
+                        torch.save(model_to_save.state_dict(), str(output_model_file))
+                        patience_stop = 0
+                    else:
+                        patience_stop += 1
+                    if patience_stop >= args.patience_stop:
+                        return
 
             res_dev = self.eval_data_set("dev")
             if res_dev['f1'] >= best_f1:
@@ -198,6 +197,7 @@ class Trainer(object):
         answer_dict = {}
 
         data_loader = self.data_loader_choice[chosen]
+        eval_file = self.eval_file_choice[chosen]
         with torch.no_grad():
             for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
                 loss, answer_dict_ = self.forward(batch, chosen, eval=True)
@@ -221,15 +221,6 @@ class Trainer(object):
 
             R = set([self.spo_tuple(spo) for spo in triple_pred])
             T = set([self.spo_tuple(spo) for spo in triple_gold])
-
-            # R = set([spo for spo in triple_pred])
-            # T = set([spo for spo in triple_gold])
-            # if R != T:
-            #     print(eval_file[key].context)
-            #     print(T)
-            #     print('#' * 10)
-            #     print(R)
-            #     print()
 
             X += len(R & T)
             Y += len(R)
@@ -261,9 +252,7 @@ class Trainer(object):
             if qid == -1:
                 continue
             tokens = eval_file[qid.item()].bert_tokens
-            context = eval_file[qid.item()].context
-            tok_to_orig_start_index = eval_file[qid.item()].tok_to_orig_start_index
-            tok_to_orig_end_index = eval_file[qid.item()].tok_to_orig_end_index
+            token_ids = eval_file[qid.item()].token_ids
             start = np.where(po_pred[:, :, 0] > 0.6)
             end = np.where(po_pred[:, :, 1] > 0.5)
 
@@ -278,14 +267,14 @@ class Trainer(object):
             po_predict = []
             for s, p, o in spoes:
                 po_predict.append(
-                    (context[tok_to_orig_start_index[s[0] - 1]:tok_to_orig_end_index[s[1] - 1] + 1],
+                    (self.tokenizer.decode(token_ids[s[0]:s[1] + 1]).replace(' ', ''),
                      self.id2rel[p],
-                     context[tok_to_orig_start_index[o[0] - 1]:tok_to_orig_end_index[o[1] - 1] + 1])
-                )
+                     self.tokenizer.decode(token_ids[o[0]:o[1] + 1]).replace(' ', ''))
+                    )
 
             if qid not in answer_dict:
                 raise ValueError('error in answer_dict ')
             else:
                 answer_dict[qid][0].append(
-                    context[tok_to_orig_start_index[subject[0] - 1]:tok_to_orig_end_index[subject[1] - 1] + 1])
+                    self.tokenizer.decode(token_ids[subject[0]:subject[1] + 1]).replace(' ', ''))
                 answer_dict[qid][1].extend(po_predict)
