@@ -3,7 +3,7 @@
 
 （预计2020年8月31日前全部更新完毕）
 
-#### 知乎专栏文章下载：[nlp中的实体关系抽取方法总结]([https://github.com/loujie0822/DeepIE/blob/jielou/docs/实体关系抽取算法总结.md)
+#### 知乎专栏文章下载：[nlp中的实体关系抽取方法总结](https://github.com/loujie0822/DeepIE/blob/jielou/docs/实体关系抽取算法总结.md)
 
 主要涉及的信息抽取技术包含：
 
