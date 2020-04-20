@@ -1,6 +1,5 @@
 import json
 import logging
-import random
 import re
 from functools import partial
 
@@ -238,12 +237,24 @@ class Reader(object):
                             if s not in spoes:
                                 spoes[s] = []
                             spoes[s].append(o)
+                if data_type == 'train':
+                    for s in spoes.keys():
+                        tmp_spoes = {}
+                        tmp_spoes[s] = spoes[s]
 
-                for s in spoes.keys():
-                    tmp_spoes ={}
-                    tmp_spoes[s]=spoes[s]
+                        examples.append(
+                            Example(
+                                p_id=p_id,
+                                context=text_raw,
+                                tok_to_orig_start_index=tok_to_orig_start_index,
+                                tok_to_orig_end_index=tok_to_orig_end_index,
+                                bert_tokens=tokens,
+                                sub_entity_list=sub_ent_list,
+                                gold_answer=src_data['spo_list'],
+                                spoes=tmp_spoes
 
-
+                            ))
+                else:
                     examples.append(
                         Example(
                             p_id=p_id,
@@ -253,9 +264,10 @@ class Reader(object):
                             bert_tokens=tokens,
                             sub_entity_list=sub_ent_list,
                             gold_answer=src_data['spo_list'],
-                            spoes=tmp_spoes
+                            spoes=None
 
                         ))
+
         # print('total gold num is {}'.format(gold_num))
 
         logging.info("{} total size is  {} ".format(data_type, len(examples)))
