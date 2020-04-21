@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import re
 from functools import partial
 
@@ -237,36 +238,46 @@ class Reader(object):
                             if s not in spoes:
                                 spoes[s] = []
                             spoes[s].append(o)
-                if data_type == 'train':
-                    for s in spoes.keys():
-                        tmp_spoes = {}
-                        tmp_spoes[s] = spoes[s]
-
-                        examples.append(
-                            Example(
-                                p_id=p_id,
-                                context=text_raw,
-                                tok_to_orig_start_index=tok_to_orig_start_index,
-                                tok_to_orig_end_index=tok_to_orig_end_index,
-                                bert_tokens=tokens,
-                                sub_entity_list=sub_ent_list,
-                                gold_answer=src_data['spo_list'],
-                                spoes=tmp_spoes
-
-                            ))
-                else:
-                    examples.append(
-                        Example(
-                            p_id=p_id,
-                            context=text_raw,
-                            tok_to_orig_start_index=tok_to_orig_start_index,
-                            tok_to_orig_end_index=tok_to_orig_end_index,
-                            bert_tokens=tokens,
-                            sub_entity_list=sub_ent_list,
-                            gold_answer=src_data['spo_list'],
-                            spoes=None
-
-                        ))
+                examples.append(
+                    Example(
+                        p_id=p_id,
+                        context=text_raw,
+                        tok_to_orig_start_index=tok_to_orig_start_index,
+                        tok_to_orig_end_index=tok_to_orig_end_index,
+                        bert_tokens=tokens,
+                        sub_entity_list=sub_ent_list,
+                        gold_answer=src_data['spo_list'],
+                        spoes=spoes
+                    ))
+                # if data_type == 'train':
+                #     for s in spoes.keys():
+                #         tmp_spoes = {}
+                #         tmp_spoes[s] = spoes[s]
+                #
+                #         examples.append(
+                #             Example(
+                #                 p_id=p_id,
+                #                 context=text_raw,
+                #                 tok_to_orig_start_index=tok_to_orig_start_index,
+                #                 tok_to_orig_end_index=tok_to_orig_end_index,
+                #                 bert_tokens=tokens,
+                #                 sub_entity_list=sub_ent_list,
+                #                 gold_answer=src_data['spo_list'],
+                #                 spoes=tmp_spoes
+                #
+                #             ))
+                # else:
+                #     examples.append(
+                #         Example(
+                #             p_id=p_id,
+                #             context=text_raw,
+                #             tok_to_orig_start_index=tok_to_orig_start_index,
+                #             tok_to_orig_end_index=tok_to_orig_end_index,
+                #             bert_tokens=tokens,
+                #             sub_entity_list=sub_ent_list,
+                #             gold_answer=src_data['spo_list'],
+                #             spoes=None
+                #         ))
 
         # print('total gold num is {}'.format(gold_num))
 
@@ -332,8 +343,8 @@ class SPODataset(Dataset):
                             subject_labels[s[0], 0] = 1
                             subject_labels[s[1], 1] = 1
                         # ⚠️不是随机选一个subject
-                        # subject_ids = random.choice(list(spoes.keys()))
-                        subject_ids = list(spoes.keys())[0]
+                        subject_ids = random.choice(list(spoes.keys()))
+                        # subject_ids = list(spoes.keys())[0]
                         # 对应的object标签
                         object_labels = np.zeros((len(token_ids), len(self.spo_config), 2), dtype=np.float32)
                         for o in spoes.get(subject_ids, []):
