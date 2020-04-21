@@ -172,7 +172,8 @@ class Reader(object):
         return self._read(filename, data_type)
 
     def _read(self, filename, data_type):
-
+        complex_relation_label = [6, 8, 24, 30, 44]
+        complex_relation_affi_label = [7, 9, 25, 26, 27, 31, 45]
         examples = []
         with open(filename, 'r') as fr:
             p_id = 0
@@ -211,8 +212,7 @@ class Reader(object):
                             sub_ent_list.append(spo['subject'])
                         else:
                             # complex relation
-                            complex_relation_label = [6, 8, 24, 30, 44]
-                            complex_relation_affi_label = [7, 9, 25, 26, 27, 31, 45]
+
                             predicate_label = self.spo_conf[spo['predicate'] + '_' + spo_object]
 
                             if predicate_label in complex_relation_affi_label:
@@ -249,23 +249,30 @@ class Reader(object):
                         gold_answer=src_data['spo_list'],
                         spoes=spoes
                     ))
-                # if data_type == 'train':
-                #     for s in spoes.keys():
-                #         tmp_spoes = {}
-                #         tmp_spoes[s] = spoes[s]
-                #
-                #         examples.append(
-                #             Example(
-                #                 p_id=p_id,
-                #                 context=text_raw,
-                #                 tok_to_orig_start_index=tok_to_orig_start_index,
-                #                 tok_to_orig_end_index=tok_to_orig_end_index,
-                #                 bert_tokens=tokens,
-                #                 sub_entity_list=sub_ent_list,
-                #                 gold_answer=src_data['spo_list'],
-                #                 spoes=tmp_spoes
-                #
-                #             ))
+                if data_type == 'train':
+                    flag=False
+                    for s,o in spoes.items():
+                        for (o1,o2,p) in o:
+                            if p in complex_relation_affi_label:
+                                flag=True
+                                continue
+                        if not flag:
+                            continue
+                        tmp_spoes = {}
+                        tmp_spoes[s] = spoes[s]
+
+                        examples.append(
+                            Example(
+                                p_id=p_id,
+                                context=text_raw,
+                                tok_to_orig_start_index=tok_to_orig_start_index,
+                                tok_to_orig_end_index=tok_to_orig_end_index,
+                                bert_tokens=tokens,
+                                sub_entity_list=sub_ent_list,
+                                gold_answer=src_data['spo_list'],
+                                spoes=tmp_spoes
+
+                            ))
                 # else:
                 #     examples.append(
                 #         Example(
