@@ -121,18 +121,37 @@ if __name__ == '__main__':
     # print("―", extractor.is_chinese_or_punct("―"))
     # print("-", extractor.is_chinese_or_punct("-"))
 
-    text_raw="1912　　"
+    text_raw="'ymx510335'"
 
     sub_text = []
     buff = ""
+    flag_en=False
+    flag_digit=False
     for char in text_raw:
         if extractor.is_chinese_or_punct(char):
             if buff != "":
                 sub_text.append(buff)
                 buff = ""
             sub_text.append(char)
+            flag_en = False
+            flag_digit = False
         else:
-            buff += char
+            if re.compile('\d').match(char):
+                if buff != "" and flag_en:
+                    sub_text.append(buff)
+                    buff = ""
+                    flag_en =False
+                flag_digit = True
+                buff +=char
+            else:
+                if buff != "" and flag_digit:
+                    sub_text.append(buff)
+                    buff = ""
+                    flag_digit =False
+                flag_en = True
+                buff +=char
+
+
     if buff != "":
         sub_text.append(buff)
 
