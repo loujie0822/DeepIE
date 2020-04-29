@@ -45,7 +45,7 @@ class NERNet(nn.Module):
             embed_size = char_emb.size()[1]
         else:
             vocab_size = len(model_conf['char_vocab'])
-            self.char_embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=args.char_emb_dim,
+            self.char_emb = nn.Embedding(num_embeddings=vocab_size, embedding_dim=args.char_emb_dim,
                                                padding_idx=0)
         self.bichar_emb = None
         if bichar_emb is not None:
@@ -80,4 +80,4 @@ class NERNet(nn.Module):
             for line in temp_tag:
                 line.extend([0] * (max_len - len(line)))
             ent_pre = torch.tensor(temp_tag).to(emission.device)
-            return label_ids
+            return ent_pre
