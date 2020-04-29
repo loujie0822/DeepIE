@@ -59,7 +59,7 @@ def get_args():
     parser.add_argument('--char_emb_dim', type=int, default=300)
     parser.add_argument('--hidden_size', type=int, default=150)
     parser.add_argument('--num_layers', type=int, default=2)
-    parser.add_argument('--dropout', type=int, default=0.5)
+    parser.add_argument('--dropout', type=int, default=0.1)
     parser.add_argument('--rnn_encoder', type=str, default='lstm', help="must choose in blow: lstm or gru")
     parser.add_argument('--bidirectional', type=bool, default=True)
     parser.add_argument('--pin_memory', type=bool, default=False)
