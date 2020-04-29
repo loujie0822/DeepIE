@@ -268,6 +268,9 @@ class Feature(object):
 
         logging.info("Processing {} examples...".format(data_type))
 
+        if data_type != 'train':
+            self.max_len = 2000
+
         examples2features = list()
         index = 0
         for example in tqdm(examples):
