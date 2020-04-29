@@ -4,7 +4,7 @@ from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 
 def set_optimizer(args, model, train_steps=None):
-    if args.use_bert:
+    if args.warm_up:
         print('using BertAdam')
         param_optimizer = list(model.named_parameters())
         param_optimizer = [n for n in param_optimizer if 'pooler' not in n[0]]
