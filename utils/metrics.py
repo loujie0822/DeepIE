@@ -121,7 +121,7 @@ class SpanFPreRecMetric(MetricBase):
             evaluate_result['pre'] = pre
             evaluate_result['rec'] = rec
             evaluate_result['em'] = em
-            evaluate_result['pre'] = pre_num
+            evaluate_result['pre_num'] = pre_num
             evaluate_result['gold'] = gold_num
 
 
