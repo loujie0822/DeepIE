@@ -13,6 +13,7 @@ from tqdm import tqdm
 from utils.data_util import padding
 from utils.file_util import _read_conll
 
+
 class Example(object):
     def __init__(self,
                  p_id=None,
@@ -64,9 +65,7 @@ class Reader(object):
                     self.ent_type[gold_] = tag_num
                     tag_num += 1
 
-            bichars = None
-            if self.bi_char:
-                bichars = [c1 + c2 for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
+            bichars = [c1 + c2 for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
             examples.append(
                 Example(
                     char=chars,
@@ -245,16 +244,16 @@ class StaticEmbedding(object):
 
 
 class Feature(object):
-    def __init__(self, args, char_vocab, bichar_vocab=None, entity_type=None,do_lower=True):
+    def __init__(self, args, char_vocab, bichar_vocab=None, entity_type=None, do_lower=True):
 
         self.char_vocab = char_vocab
         self.bichar_vocab = bichar_vocab
         self.max_len = args.max_len
         self.entity_type = entity_type
-        self.do_lower=do_lower
+        self.do_lower = do_lower
 
     def token2id(self, token, vocab_type='char'):
-        token=token.lower() if self.do_lower else token
+        token = token.lower() if self.do_lower else token
         word2idx_dict = self.char_vocab
         if vocab_type == 'bichar':
             word2idx_dict = self.bichar_vocab
@@ -282,7 +281,7 @@ class Feature(object):
 
             for i, token in enumerate(chars):
                 char_id[i] = self.token2id(token, 'char')
-            if len(self.bichar_vocab)>1:
+            if len(self.bichar_vocab) > 1:
                 for i, token in enumerate(bichars):
                     bichar_id[i] = self.token2id(token, 'bichar')
             for i, label in enumerate(gold_answers):
@@ -299,6 +298,7 @@ class Feature(object):
 
         logging.info("Built instances is Completed")
         return NERDataset(examples2features)
+
 
 class NERDataset(Dataset):
     def __init__(self, features):
