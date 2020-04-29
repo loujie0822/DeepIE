@@ -41,15 +41,23 @@ class NERNet(nn.Module):
         bichar_emb = model_conf['bichar_emb']
         embed_size = args.char_emb_dim
         if char_emb is not None:
-            self.char_emb = nn.Embedding.from_pretrained(char_emb, freeze=False, padding_idx=0)
+            # self.char_emb = nn.Embedding.from_pretrained(char_emb, freeze=False, padding_idx=0)
+
+            self.char_emb = nn.Embedding(num_embeddings=char_emb.shape[0], embedding_dim=char_emb.shape[1],
+                                         padding_idx=0, _weight=char_emb)
+            self.char_emb.weight.requires_grad=True
             embed_size = char_emb.size()[1]
         else:
             vocab_size = len(model_conf['char_vocab'])
             self.char_emb = nn.Embedding(num_embeddings=vocab_size, embedding_dim=args.char_emb_dim,
-                                               padding_idx=0)
+                                         padding_idx=0)
         self.bichar_emb = None
         if bichar_emb is not None:
-            self.bichar_emb = nn.Embedding.from_pretrained(bichar_emb, freeze=False, padding_idx=0)
+            # self.bichar_emb = nn.Embedding.from_pretrained(bichar_emb, freeze=False, padding_idx=0)
+            self.bichar_emb = nn.Embedding(num_embeddings=bichar_emb.shape[0], embedding_dim=bichar_emb.shape[1],
+                                           padding_idx=0, _weight=bichar_emb)
+            self.bichar_emb.weight.requires_grad = True
+
             embed_size += bichar_emb.size()[1]
 
         self.sentence_encoder = SentenceEncoder(args, embed_size)
