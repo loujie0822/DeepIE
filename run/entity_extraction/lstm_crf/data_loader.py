@@ -1,7 +1,7 @@
 import logging
 import os
 import warnings
-from collections import Counter
+from collections import Counter, OrderedDict
 from functools import partial
 
 import numpy as np
@@ -10,30 +10,8 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
-from layers.encoders.transformers.bert.bert_tokenization import BertTokenizer
 from utils.data_util import padding
 from utils.file_util import _read_conll
-
-config = {
-
-    'drug': {
-        'PAD': 0,
-        'O': 1,
-        'B-药物': 2,
-        'I-药物': 3,
-    },
-    'CT': {
-        'PAD': 0,
-        'O': 1,
-        'B-病灶部位': 2,
-        'I-病灶部位': 3,
-        'B-淋巴结部位': 4,
-        'I-淋巴结部位': 5,
-        'B-远处转移部位': 6,
-        'I-远处转移部位': 7
-    }
-}
-
 
 class Example(object):
     def __init__(self,
@@ -51,10 +29,12 @@ class InputFeature(object):
 
     def __init__(self,
                  p_id=None,
-                 passage_id=None,
+                 char_id=None,
+                 bichar_id=None,
                  label_id=None):
         self.p_id = p_id
-        self.passage_id = passage_id
+        self.char_id = char_id
+        self.bichar_id = bichar_id
         self.label_id = label_id
 
 
@@ -63,6 +43,7 @@ class Reader(object):
 
         self.do_lowercase = do_lowercase
         self.bi_char = bi_char
+        self.ent_type = OrderedDict()
 
     def read_examples(self, filename, data_type):
         logging.info("Generating {} examples...".format(data_type))
@@ -71,10 +52,18 @@ class Reader(object):
     def _read(self, filename, data_type):
 
         examples = []
-
+        tag_num = 0
         for idx, data in _read_conll(filename):
             chars = data[0]
             gold_answer = data[1]
+            if data_type == 'train':
+
+                for gold_ in gold_answer:
+                    if gold_ in self.ent_type:
+                        continue
+                    self.ent_type[gold_] = tag_num
+                    tag_num += 1
+
             bichars = None
             if self.bi_char:
                 bichars = [c1 + c2 for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
@@ -256,74 +245,84 @@ class StaticEmbedding(object):
 
 
 class Feature(object):
-    def __init__(self, args, token2idx_dict, entity_type):
-        self.bert = args.use_bert
-        self.token2idx_dict = token2idx_dict
-        self.entity_config = config[entity_type]
-        if self.bert:
-            self.tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=args.do_lower_case)
+    def __init__(self, args, char_vocab, bichar_vocab=None, entity_type=None):
 
-    def token2wid(self, token):
-        if token in self.token2idx_dict:
-            return self.token2idx_dict[token]
-        return self.token2idx_dict["<OOV>"]
+        self.char_vocab = char_vocab
+        self.bichar_vocab = bichar_vocab
+        self.max_len = args.max_len
+        self.entity_type = entity_type
+
+    def token2id(self, token, vocab_type='char'):
+        word2idx_dict = self.char_vocab
+        if vocab_type == 'bichar':
+            word2idx_dict = self.bichar_vocab
+        if token in word2idx_dict:
+            return word2idx_dict[token]
+        return word2idx_dict["<unk>"]
 
     def __call__(self, examples, entity_type, data_type):
+        return self.convert_examples_to_features(examples, data_type)
 
-        if self.bert:
-            return self.convert_examples_to_bert_features(examples, entity_type, data_type)
-        else:
-            return self.convert_examples_to_features(examples, entity_type, data_type)
-
-    def convert_examples_to_features(self, examples, entity_type, data_type):
+    def convert_examples_to_features(self, examples, data_type):
 
         logging.info("Processing {} examples...".format(data_type))
 
         examples2features = list()
-        for index, example in enumerate(examples):
+        index = 0
+        for example in tqdm(examples):
+            assert len(example.char) == len(example.bichar) == len(example.gold_answer)
+            chars = example.char[:self.max_len]
+            bichars = example.bichar[:self.max_len]
+            gold_answers = example.gold_answer[:self.max_len]
+            char_id = np.zeros(len(chars), dtype=np.int)
+            bichar_id = np.zeros(len(bichars), dtype=np.int)
+            label_id = np.zeros(len(gold_answers), dtype=np.int)
 
-            passage_id = np.zeros(len(example.context), dtype=np.int)
-            label_id = np.zeros(len(example.context), dtype=np.int)
-            for i, token in enumerate(example.context):
-                passage_id[i] = self.token2wid(token)
-            for i, label in enumerate(example.ent_label):
-                label_id[i] = self.entity_config[label]
+            for i, token in enumerate(chars):
+                char_id[i] = self.token2id(token, 'char')
+            for i, token in enumerate(bichars):
+                bichar_id[i] = self.token2id(token, 'bichar')
+            for i, label in enumerate(gold_answers):
+                label_id[i] = self.entity_type[label]
 
             examples2features.append(
                 InputFeature(
                     p_id=index,
-                    passage_id=passage_id,
+                    char_id=char_id,
+                    bichar_id=bichar_id,
                     label_id=label_id
                 ))
+            index += 1
 
         logging.info("Built instances is Completed")
-        return CRFDataset(examples2features)
+        return NERDataset(examples2features)
 
     def convert_examples_to_bert_features(self, examples, entity_type, data_type):
         pass
 
 
-class CRFDataset(Dataset):
+class NERDataset(Dataset):
     def __init__(self, features):
-        super(CRFDataset, self).__init__()
+        super(NERDataset, self).__init__()
         self.q_ids = [f.p_id for f in features]
-        self.passages = [f.passage_id for f in features]
+        self.char_id = [f.char_id for f in features]
+        self.bichar_id = [f.bichar_id for f in features]
         self.label_id = [f.label_id for f in features]
 
     def __len__(self):
-        return len(self.passages)
+        return len(self.q_ids)
 
     def __getitem__(self, index):
-        return self.q_ids[index], self.passages[index], self.label_id[index]
+        return self.q_ids[index], self.char_id[index], self.bichar_id[index], self.label_id[index]
 
     def _create_collate_fn(self, batch_first=False):
         def collate(examples):
-            p_ids, passages, label_id = zip(*examples)
+            p_ids, char_id, bichar_id, label_id = zip(*examples)
             p_ids = torch.tensor([p_id for p_id in p_ids], dtype=torch.long)
-            passages_tensor, _ = padding(passages, is_float=False, batch_first=batch_first)
+            char_tensor, _ = padding(char_id, is_float=False, batch_first=batch_first)
+            bichar_tensor, _ = padding(bichar_id, is_float=False, batch_first=batch_first)
             label_tensor, _ = padding(label_id, is_float=False, batch_first=batch_first)
-
-            return p_ids, passages_tensor, label_tensor
+            return p_ids, char_tensor, bichar_tensor, label_tensor
 
         return partial(collate)
 
