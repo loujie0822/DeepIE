@@ -108,6 +108,7 @@ def bulid_dataset(args, debug=False):
 
         pickle.dump(cache_data, open(cache_data_file, 'wb'))
     else:
+        logging.info('loadding  file {}'.format(cache_data_file))
         cache_data = load(cache_data_file)
     logging.info('train examples size is {}'.format(len(cache_data['train_data'])))
     logging.info('dev examples size is {}'.format(len(cache_data['dev_data'])))
