@@ -26,7 +26,7 @@ def get_args():
 
     # choice parameters
     parser.add_argument('--entity_type', type=str, default='drug')
-    parser.add_argument('--use_static_emb', type=bool, default=True)
+    parser.add_argument('--use_static_emb', type=bool, default=False)
     parser.add_argument('--use_dynamic_emb', type=bool, default=False)
     parser.add_argument('--bi_char', type=bool, default=False)
     parser.add_argument('--warm_up', type=bool, default=False)
@@ -87,14 +87,14 @@ def bulid_dataset(args, debug=False):
         dev_examples = reader.read_examples(dev_src, data_type='dev')
 
         char_vocab = Vocabulary(min_char_count=1)
-        char_vocab.build_vocab(train_examples)
+        char_vocab.build_vocab(train_examples+dev_examples)
         char_emb, bichar_emb, bichar_vocab = None, None, None
         if args.use_static_emb:
             char_emb = StaticEmbedding(char_vocab, model_path='cpt/gigaword/uni.ite50.vec',
                                        only_norm_found_vector=True).emb_vectors
             if args.bi_char:
                 bichar_vocab = Vocabulary(char_type='bichar', min_char_count=2)
-                bichar_vocab.build_vocab(train_examples)
+                bichar_vocab.build_vocab(train_examples+dev_examples)
                 bichar_emb = StaticEmbedding(bichar_vocab, model_path='cpt/gigaword/bi.ite50.vec',
                                              only_norm_found_vector=True).emb_vectors
 
