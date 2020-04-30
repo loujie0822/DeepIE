@@ -26,7 +26,7 @@ def get_args():
 
     # choice parameters
     parser.add_argument('--entity_type', type=str, default='drug')
-    parser.add_argument('--use_static_emb', type=bool, default=False)
+    parser.add_argument('--use_static_emb', type=bool, default=True)
     parser.add_argument('--use_dynamic_emb', type=bool, default=False)
     parser.add_argument('--bi_char', type=bool, default=False)
     parser.add_argument('--warm_up', type=bool, default=False)

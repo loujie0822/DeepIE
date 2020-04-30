@@ -235,7 +235,9 @@ class StaticEmbedding(object):
                     if found_unknown:  # 如果有unkonwn，用unknown初始化
                         matrix[index] = matrix[vocab.word2idx[unknown]]
                     else:
-                        matrix[index] = None
+                        # todo check
+                        matrix[index] =matrix[vocab.word2idx[unknown]]
+                        # matrix[index] = None
             vectors = self._randomly_init_embed(len(matrix), dim)
             for index_in_vocab, vec in matrix.items():
                 if vec is not None:
