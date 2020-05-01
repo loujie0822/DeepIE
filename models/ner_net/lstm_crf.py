@@ -1,6 +1,7 @@
 # _*_ coding:utf-8 _*_
 import copy
 import warnings
+import torch.nn.functional as F
 
 import torch
 from torch import nn
@@ -75,6 +76,7 @@ class NERNet(nn.Module):
 
         bio_mask = char_id != 0
         emission = self.emission(sen_encoded)
+        emission = F.log_softmax(emission, dim=-1)
 
         if not is_eval:
             crf_loss = -self.crf(emission, label_ids, mask=bio_mask, reduction='mean')
