@@ -60,16 +60,12 @@ class NERNet(nn.Module):
             self.bichar_emb.weight.requires_grad = True
 
             embed_size += bichar_emb.size()[1]
-        if args.soft_word:
-            self.soft_word_emb = nn.Embedding(num_embeddings=5, embedding_dim=50, padding_idx=0)
-            embed_size += 50
-            self.soft_word_emb.weight.requires_grad = False
 
         self.sentence_encoder = SentenceEncoder(args, embed_size)
         self.emission = nn.Linear(args.hidden_size * 2, len(model_conf['entity_type']))
         self.crf = CRF(len(model_conf['entity_type']), batch_first=True)
 
-    def forward(self, char_id, bichar_id, soft_word_id, label_id=None, is_eval=False):
+    def forward(self, char_id, bichar_id, label_id=None, is_eval=False):
         # use anti-mask for answers-locator
         mask = char_id.eq(0)
         chars = self.char_emb(char_id)
@@ -77,9 +73,6 @@ class NERNet(nn.Module):
         if self.bichar_emb is not None:
             bichars = self.bichar_emb(bichar_id)
             chars = torch.cat([chars, bichars], dim=-1)
-        if self.soft_word_emb is not None:
-            sorf_word_emb = self.soft_word_emb(soft_word_id)
-            chars = torch.cat([chars, sorf_word_emb], dim=-1)
 
         sen_encoded = self.sentence_encoder(chars, mask)
 

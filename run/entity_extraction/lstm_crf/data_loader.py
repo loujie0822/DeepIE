@@ -20,12 +20,10 @@ class Example(object):
                  p_id=None,
                  char=None,
                  bichar=None,
-                 soft_word=None,
                  gold_answer=None):
         self.p_id = p_id
         self.char = char
         self.bichar = bichar
-        self.soft_word = soft_word
         self.gold_answer = gold_answer
 
 
@@ -35,12 +33,10 @@ class InputFeature(object):
                  p_id=None,
                  char_id=None,
                  bichar_id=None,
-                 soft_word_id=None,
                  label_id=None):
         self.p_id = p_id
         self.char_id = char_id
         self.bichar_id = bichar_id
-        self.soft_word_id = soft_word_id
         self.label_id = label_id
 
 
@@ -71,24 +67,23 @@ class Reader(object):
                     tag_num += 1
 
             bichars = [c1 + c2 for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
-            segchars = jieba.lcut(''.join(chars))
-            soft_word = []
-            for seg in segchars:
-                if len(seg) == 1:
-                    soft_word.append('S')
-                else:
-                    soft_word.append('B')
-                    if len(seg) > 2:
-                        for _ in range(len(seg) - 2):
-                            soft_word.append('M')
-                    soft_word.append('E')
-            assert len(soft_word) == len(chars)
+            # segchars = jieba.lcut(''.join(chars))
+            # soft_word = []
+            # for seg in segchars:
+            #     if len(seg) == 1:
+            #         soft_word.append('S')
+            #     else:
+            #         soft_word.append('B')
+            #         if len(seg) > 2:
+            #             for _ in range(len(seg) - 2):
+            #                 soft_word.append('M')
+            #         soft_word.append('E')
+            # assert len(soft_word) == len(chars)
             examples.append(
                 Example(
                     char=chars,
                     bichar=bichars,
                     gold_answer=gold_answer,
-                    soft_word=soft_word
                 )
             )
         logging.info("{} total size is  {} ".format(data_type, len(examples)))
@@ -271,7 +266,6 @@ class Feature(object):
         self.max_len = args.max_len
         self.entity_type = entity_type
         self.do_lower = do_lower
-        self.softword2id = {'PAD': 0, 'B': 1, 'M': 2, 'E': 3, 'S': 4}
 
     def token2id(self, token, vocab_type='char'):
         token = token.lower() if self.do_lower else token
@@ -295,14 +289,13 @@ class Feature(object):
         examples2features = list()
         index = 0
         for example in tqdm(examples):
-            assert len(example.char) == len(example.bichar) == len(example.gold_answer) == len(example.soft_word)
+            assert len(example.char) == len(example.bichar) == len(example.gold_answer)
             chars = example.char[:self.max_len]
             bichars = example.bichar[:self.max_len]
             gold_answers = example.gold_answer[:self.max_len]
-            soft_words = example.soft_word[:self.max_len]
+
             char_id = np.zeros(len(chars), dtype=np.int)
             bichar_id = np.zeros(len(bichars), dtype=np.int)
-            soft_word_id = np.zeros(len(soft_words), dtype=np.int)
             label_id = np.zeros(len(gold_answers), dtype=np.int)
 
             for i, token in enumerate(chars):
@@ -310,8 +303,7 @@ class Feature(object):
             if len(self.bichar_vocab) > 1:
                 for i, token in enumerate(bichars):
                     bichar_id[i] = self.token2id(token, 'bichar')
-            for i, word in enumerate(soft_words):
-                soft_word_id[i] = self.softword2id[word]
+
 
             for i, label in enumerate(gold_answers):
                 label_id[i] = self.entity_type[label]
@@ -321,7 +313,6 @@ class Feature(object):
                     p_id=index,
                     char_id=char_id,
                     bichar_id=bichar_id,
-                    soft_word_id=soft_word_id,
                     label_id=label_id
                 ))
             index += 1
@@ -336,14 +327,13 @@ class NERDataset(Dataset):
         self.q_ids = [f.p_id for f in features]
         self.char_id = [f.char_id for f in features]
         self.bichar_id = [f.bichar_id for f in features]
-        self.soft_word_id = [f.soft_word_id for f in features]
         self.label_id = [f.label_id for f in features]
 
     def __len__(self):
         return len(self.q_ids)
 
     def __getitem__(self, index):
-        return self.q_ids[index], self.char_id[index], self.bichar_id[index], self.soft_word_id[index],self.label_id[index]
+        return self.q_ids[index], self.char_id[index], self.bichar_id[index], self.label_id[index]
 
     def _create_collate_fn(self, batch_first=False):
         def collate(examples):
@@ -351,9 +341,8 @@ class NERDataset(Dataset):
             p_ids = torch.tensor([p_id for p_id in p_ids], dtype=torch.long)
             char_tensor, _ = padding(char_id, is_float=False, batch_first=batch_first)
             bichar_tensor, _ = padding(bichar_id, is_float=False, batch_first=batch_first)
-            soft_word_tensor, _ = padding(soft_word_id, is_float=False, batch_first=batch_first)
             label_tensor, _ = padding(label_id, is_float=False, batch_first=batch_first)
-            return p_ids, char_tensor, bichar_tensor, soft_word_tensor,label_tensor
+            return p_ids, char_tensor, bichar_tensor,label_tensor
 
         return partial(collate)
 
