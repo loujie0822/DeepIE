@@ -111,6 +111,7 @@ class Trainer(object):
                 loss = loss.mean()  # mean() to average on multi-gpu.\
 
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
             loss = loss.item()
             self.optimizer.step()
             self.optimizer.zero_grad()
