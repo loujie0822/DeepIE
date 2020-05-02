@@ -10,6 +10,7 @@ from torch import nn
 from tqdm import tqdm
 
 import models.ner_net.lstm_crf as ner
+from models.ner_net.tener import TENER
 from utils.metrics import SpanFPreRecMetric
 from utils.optimizer_util import set_optimizer
 
@@ -20,7 +21,10 @@ class Trainer(object):
 
     def __init__(self, args, data_loaders, examples, model_conf):
 
-        self.model = ner.NERNet(args, model_conf)
+        if args.encoder=='tener':
+            self.model = TENER(model_conf)
+        else:
+            self.model = ner.NERNet(args, model_conf)
 
         self.args = args
         self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
