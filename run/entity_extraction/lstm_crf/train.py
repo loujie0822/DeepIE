@@ -62,7 +62,7 @@ class Trainer(object):
         best_f1 = 0.0
         patience_stop = 0
         self.model.train()
-        step_gap = 60
+        step_gap = int(int(len(self.eval_file_choice['train']) / args.train_batch_size)/20)
         for epoch in range(int(args.epoch_num)):
 
             global_loss = 0.0
