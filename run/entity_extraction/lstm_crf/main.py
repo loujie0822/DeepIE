@@ -29,8 +29,9 @@ def get_args():
     parser.add_argument('--use_static_emb', type=bool, default=True)
     parser.add_argument('--use_dynamic_emb', type=bool, default=False)
     parser.add_argument('--bi_char', type=bool, default=True)
+    parser.add_argument('--soft_word', type=bool, default=True)
     parser.add_argument('--warm_up', type=bool, default=False)
-    parser.add_argument('--encoder', type=str, default='tener', choices=['lstm', 'tener'])
+    parser.add_argument('--encoder', type=str, default='lstm', choices=['lstm', 'tener'])
 
     # train parameters
     parser.add_argument('--train_mode', type=str, default="train")
@@ -99,7 +100,7 @@ def bulid_dataset(args, debug=False):
                 bichar_vocab = Vocabulary(char_type='bichar', min_char_count=2)
                 bichar_vocab.build_vocab(train_examples+dev_examples)
                 bichar_emb = StaticEmbedding(bichar_vocab, model_path='cpt/gigaword/bi.ite50.vec',
-                                             only_norm_found_vector=False).emb_vectors
+                                             only_norm_found_vector=True).emb_vectors
 
         cache_data['train_data'] = train_examples
         cache_data['dev_data'] = dev_examples

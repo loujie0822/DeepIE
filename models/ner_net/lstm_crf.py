@@ -1,9 +1,9 @@
 # _*_ coding:utf-8 _*_
 import copy
 import warnings
-import torch.nn.functional as F
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 
 from layers.decoders.crf import CRF
@@ -46,7 +46,7 @@ class NERNet(nn.Module):
 
             self.char_emb = nn.Embedding(num_embeddings=char_emb.shape[0], embedding_dim=char_emb.shape[1],
                                          padding_idx=0, _weight=char_emb)
-            self.char_emb.weight.requires_grad=True
+            self.char_emb.weight.requires_grad = True
             embed_size = char_emb.size()[1]
         else:
             vocab_size = len(model_conf['char_vocab'])
@@ -60,18 +60,26 @@ class NERNet(nn.Module):
             self.bichar_emb.weight.requires_grad = True
 
             embed_size += bichar_emb.size()[1]
+        if args.soft_word:
+            self.soft_word_emb = nn.Embedding(num_embeddings=5, embedding_dim=50, padding_idx=0)
+            embed_size += 50
 
         self.sentence_encoder = SentenceEncoder(args, embed_size)
         self.emission = nn.Linear(args.hidden_size * 2, len(model_conf['entity_type']))
         self.crf = CRF(len(model_conf['entity_type']), batch_first=True)
 
-    def forward(self, char_id, bichar_id, label_ids=None, is_eval=False):
+    def forward(self, char_id, bichar_id, soft_word_id, label_id=None, is_eval=False):
         # use anti-mask for answers-locator
         mask = char_id.eq(0)
         chars = self.char_emb(char_id)
+
         if self.bichar_emb is not None:
             bichars = self.bichar_emb(bichar_id)
             chars = torch.cat([chars, bichars], dim=-1)
+        if self.soft_word_emb is not None:
+            sorf_word_emb = self.soft_word_emb(soft_word_id)
+            chars = torch.cat([chars, sorf_word_emb], dim=-1)
+
         sen_encoded = self.sentence_encoder(chars, mask)
 
         bio_mask = char_id != 0
@@ -79,7 +87,7 @@ class NERNet(nn.Module):
         emission = F.log_softmax(emission, dim=-1)
 
         if not is_eval:
-            crf_loss = -self.crf(emission, label_ids, mask=bio_mask, reduction='mean')
+            crf_loss = -self.crf(emission, label_id, mask=bio_mask, reduction='mean')
             return crf_loss
         else:
             pred = self.crf.decode(emissions=emission, mask=bio_mask)

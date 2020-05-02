@@ -21,7 +21,7 @@ class Trainer(object):
 
     def __init__(self, args, data_loaders, examples, model_conf):
 
-        if args.encoder=='tener':
+        if args.encoder == 'tener':
             self.model = TENER(model_conf)
         else:
             self.model = ner.NERNet(args, model_conf)
@@ -62,7 +62,7 @@ class Trainer(object):
         best_f1 = 0.0
         patience_stop = 0
         self.model.train()
-        step_gap = int(int(len(self.eval_file_choice['train']) / args.train_batch_size)/20)
+        step_gap = int(int(len(self.eval_file_choice['train']) / args.train_batch_size) / 20)
         for epoch in range(int(args.epoch_num)):
 
             global_loss = 0.0
@@ -104,9 +104,9 @@ class Trainer(object):
 
         batch = tuple(t.to(self.device) for t in batch)
 
-        p_ids, char_id, bichar_id, label_id = batch
+        p_ids, char_id, bichar_id, soft_word_id, label_id = batch
         if not eval:
-            loss = self.model(char_id=char_id, bichar_id=bichar_id, label_ids=label_id, is_eval=eval)
+            loss = self.model(char_id=char_id, bichar_id=bichar_id, soft_word_id=soft_word_id,label_id=label_id, is_eval=eval)
             if self.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu.\
 
