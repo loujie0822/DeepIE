@@ -29,12 +29,14 @@ def get_args():
     parser.add_argument('--use_static_emb', type=bool, default=True)
     parser.add_argument('--use_dynamic_emb', type=bool, default=False)
     parser.add_argument('--bi_char', type=bool, default=True)
-    parser.add_argument('--warm_up', type=bool, default=True)
+    parser.add_argument('--warm_up', type=bool, default=False)
     parser.add_argument('--encoder', type=str, default='tener', choices=['lstm', 'tener'])
 
     # train parameters
     parser.add_argument('--train_mode', type=str, default="train")
     parser.add_argument("--train_batch_size", default=4, type=int, help="Total batch size for training.")
+    parser.add_argument("--dev_batch_size", default=4, type=int, help="Total batch size for dev.")
+
     parser.add_argument("--learning_rate", default=5e-5, type=float, help="The initial learning rate for Adam.")
     parser.add_argument("--epoch_num", default=3, type=int,
                         help="Total number of training epochs to perform.")
@@ -126,7 +128,7 @@ def bulid_dataset(args, debug=False):
     train_data_set = convert_examples_features(train_examples, entity_type=args.entity_type, data_type='train')
     dev_data_set = convert_examples_features(dev_examples, entity_type=args.entity_type, data_type='dev')
     train_data_loader = train_data_set.get_dataloader(args.train_batch_size, shuffle=True, pin_memory=args.pin_memory)
-    dev_data_loader = dev_data_set.get_dataloader(args.train_batch_size)
+    dev_data_loader = dev_data_set.get_dataloader(args.dev_batch_size)
 
     data_loaders = train_data_loader, dev_data_loader
     eval_examples = train_examples, dev_examples
