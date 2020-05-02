@@ -31,6 +31,7 @@ def get_args():
     parser.add_argument('--bi_char', type=bool, default=True)
     parser.add_argument('--soft_word', type=bool, default=True)
     parser.add_argument('--warm_up', type=bool, default=False)
+    parser.add_argument('--debug', type=bool, default=False)
     parser.add_argument('--encoder', type=str, default='lstm', choices=['lstm', 'tener'])
 
     # train parameters
@@ -151,7 +152,7 @@ def main():
 
     logger.info("** ** * bulid dataset ** ** * ")
 
-    eval_examples, data_loaders, model_conf = bulid_dataset(args, debug=True)
+    eval_examples, data_loaders, model_conf = bulid_dataset(args, debug=args.debug)
 
     trainer = Trainer(args, data_loaders, eval_examples, model_conf)
 
