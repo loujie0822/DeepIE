@@ -63,6 +63,7 @@ class NERNet(nn.Module):
         if args.soft_word:
             self.soft_word_emb = nn.Embedding(num_embeddings=5, embedding_dim=50, padding_idx=0)
             embed_size += 50
+            self.soft_word_emb.weight.requires_grad = False
 
         self.sentence_encoder = SentenceEncoder(args, embed_size)
         self.emission = nn.Linear(args.hidden_size * 2, len(model_conf['entity_type']))
