@@ -152,7 +152,7 @@ def main():
 
     logger.info("** ** * bulid dataset ** ** * ")
 
-    eval_examples, data_loaders, model_conf = bulid_dataset(args, debug=args.debug)
+    eval_examples, data_loaders, model_conf = bulid_dataset(args, debug=True)
 
     trainer = Trainer(args, data_loaders, eval_examples, model_conf)
 

@@ -337,7 +337,7 @@ class NERDataset(Dataset):
 
     def _create_collate_fn(self, batch_first=False):
         def collate(examples):
-            p_ids, char_id, bichar_id, soft_word_id,label_id = zip(*examples)
+            p_ids, char_id, bichar_id,label_id = zip(*examples)
             p_ids = torch.tensor([p_id for p_id in p_ids], dtype=torch.long)
             char_tensor, _ = padding(char_id, is_float=False, batch_first=batch_first)
             bichar_tensor, _ = padding(bichar_id, is_float=False, batch_first=batch_first)
