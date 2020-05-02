@@ -117,7 +117,7 @@ class Trainer(object):
             self.optimizer.zero_grad()
             return loss
         else:
-            pred = self.model(char_id=char_id, bichar_id=bichar_id, label_id=label_id, is_eval=eval)
+            pred = self.model(char_id=char_id, bichar_id=bichar_id, soft_word_id=soft_word_id,label_id=label_id, is_eval=eval)
             eval_file = self.eval_file_choice[chosen]
             answer_dict = self.metric(p_ids, pred, eval_file)
             return answer_dict
