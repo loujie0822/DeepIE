@@ -538,6 +538,7 @@ if __name__ == '__main__':
                 pickle.dump(data, f)
             set_seed(seed_num)
         print('data.use_biword=', data.use_bigram)
+        print('data.HP_batch_size=', data.HP_batch_size)
         data.HP_batch_size=10
         train(data, save_model_dir, seg,debug=False)
     elif status == 'test':
