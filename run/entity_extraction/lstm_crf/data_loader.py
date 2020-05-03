@@ -75,7 +75,8 @@ class Reader(object):
                     self.ent_type[gold_] = tag_num
                     tag_num += 1
 
-            bichars = [c1 + c2 for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
+            chars=[normalize_word(char) for char in chars]
+            bichars = [normalize_word(c1 + c2) for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
             # segchars = jieba.lcut(''.join(chars))
             # soft_word = []
             # for seg in segchars:
@@ -111,7 +112,6 @@ class Vocabulary(object):
         self.char_type = char_type
         self.min_char_count = min_char_count
         self.lower = lower
-        self.number_normalized = True
         self.padding = "<pad>"
         self.unknown = "<unk>"
 
@@ -136,8 +136,6 @@ class Vocabulary(object):
             elif self.char_type == 'bichar':
                 sentence = example.bichar
             for char in sentence:
-                if self.number_normalized:
-                    char=normalize_word(char)
                 self._add_word(char)
 
         for w, v in self.counter.most_common():
