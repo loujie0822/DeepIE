@@ -61,7 +61,10 @@ class NERNet(nn.Module):
 
             embed_size += bichar_emb.size()[1]
 
-        self.sentence_encoder = SentenceEncoder(args, embed_size)
+        self.drop = nn.Dropout(p=0.5)
+        # self.sentence_encoder = SentenceEncoder(args, embed_size)
+        self.sentence_encoder = nn.LSTM(embed_size, args.hidden_size, num_layers=1, batch_first=True,
+                                        bidirectional=True)
         self.emission = nn.Linear(args.hidden_size * 2, len(model_conf['entity_type']))
         self.crf = CRF(len(model_conf['entity_type']), batch_first=True)
 
@@ -73,8 +76,11 @@ class NERNet(nn.Module):
         if self.bichar_emb is not None:
             bichars = self.bichar_emb(bichar_id)
             chars = torch.cat([chars, bichars], dim=-1)
+        chars = self.drop(chars)
 
-        sen_encoded = self.sentence_encoder(chars, mask)
+        # sen_encoded = self.sentence_encoder(chars, mask)
+        sen_encoded, _ = self.sentence_encoder(chars)
+        sen_encoded = self.drop(sen_encoded)
 
         bio_mask = char_id != 0
         emission = self.emission(sen_encoded)
