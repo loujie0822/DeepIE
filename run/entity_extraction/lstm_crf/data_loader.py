@@ -4,7 +4,6 @@ import warnings
 from collections import Counter, OrderedDict
 from functools import partial
 
-import jieba
 import numpy as np
 import torch
 import torch.nn as nn
@@ -13,6 +12,16 @@ from tqdm import tqdm
 
 from utils.data_util import padding
 from utils.file_util import _read_conll
+
+
+def normalize_word(word):
+    new_word = ""
+    for char in word:
+        if char.isdigit():
+            new_word += '0'
+        else:
+            new_word += char
+    return new_word
 
 
 class Example(object):
@@ -92,7 +101,7 @@ class Reader(object):
 
 class Vocabulary(object):
 
-    def __init__(self, char_type='char', special_tokens=[], min_char_count=-1, lower=True):
+    def __init__(self, char_type='char', special_tokens=[], min_char_count=-1, lower=False):
 
         self.vocab = []
         self.emb_mat = None
@@ -101,7 +110,8 @@ class Vocabulary(object):
         self.special_tokens = special_tokens
         self.char_type = char_type
         self.min_char_count = min_char_count
-        self.lower = True
+        self.lower = lower
+        self.number_normalized = True
         self.padding = "<pad>"
         self.unknown = "<unk>"
 
@@ -122,11 +132,13 @@ class Vocabulary(object):
 
         for example in tqdm(examples):
             if self.char_type == 'char':
-                for char in example.char:
-                    self._add_word(char)
+                sentence = example.char
             elif self.char_type == 'bichar':
-                for char in example.bichar:
-                    self._add_word(char)
+                sentence = example.bichar
+            for char in sentence:
+                if self.number_normalized:
+                    char=normalize_word(char)
+                self._add_word(char)
 
         for w, v in self.counter.most_common():
             if v >= self.min_char_count:
@@ -196,7 +208,7 @@ class StaticEmbedding(object):
 
         return embed
 
-    def _load_with_vocab(self, model_path, vocab, error='ignore', padding='<pad>', unknown='<unk>', dtype=np.float32):
+    def _load_with_vocab(self, model_path, vocab, error='ignoree', padding='<pad>', unknown='<unk>', dtype=np.float32):
 
         assert isinstance(vocab, Vocabulary), "Only Vocabulary is supported."
         if not os.path.exists(model_path):
@@ -249,8 +261,8 @@ class StaticEmbedding(object):
                         matrix[index] = matrix[vocab.word2idx[unknown]]
                     else:
                         # todo check
-                        matrix[index] = matrix[vocab.word2idx[unknown]]
-                        # matrix[index] = None
+                        # matrix[index] = matrix[vocab.word2idx[unknown]]
+                        matrix[index] = None
             vectors = self._randomly_init_embed(len(matrix), dim)
             for index_in_vocab, vec in matrix.items():
                 if vec is not None:
@@ -259,7 +271,7 @@ class StaticEmbedding(object):
 
 
 class Feature(object):
-    def __init__(self, args, char_vocab, bichar_vocab=None, entity_type=None, do_lower=True):
+    def __init__(self, args, char_vocab, bichar_vocab=None, entity_type=None, do_lower=False):
 
         self.char_vocab = char_vocab
         self.bichar_vocab = bichar_vocab
@@ -304,7 +316,6 @@ class Feature(object):
                 for i, token in enumerate(bichars):
                     bichar_id[i] = self.token2id(token, 'bichar')
 
-
             for i, label in enumerate(gold_answers):
                 label_id[i] = self.entity_type[label]
 
@@ -337,12 +348,12 @@ class NERDataset(Dataset):
 
     def _create_collate_fn(self, batch_first=False):
         def collate(examples):
-            p_ids, char_id, bichar_id,label_id = zip(*examples)
+            p_ids, char_id, bichar_id, label_id = zip(*examples)
             p_ids = torch.tensor([p_id for p_id in p_ids], dtype=torch.long)
             char_tensor, _ = padding(char_id, is_float=False, batch_first=batch_first)
             bichar_tensor, _ = padding(bichar_id, is_float=False, batch_first=batch_first)
             label_tensor, _ = padding(label_id, is_float=False, batch_first=batch_first)
-            return p_ids, char_tensor, bichar_tensor,label_tensor
+            return p_ids, char_tensor, bichar_tensor, label_tensor
 
         return partial(collate)
 

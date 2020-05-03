@@ -98,7 +98,7 @@ def bulid_dataset(args, debug=False):
             char_emb = StaticEmbedding(char_vocab, model_path='cpt/gigaword/uni.ite50.vec',
                                        only_norm_found_vector=True).emb_vectors
             if args.bi_char:
-                bichar_vocab = Vocabulary(char_type='bichar', min_char_count=2)
+                bichar_vocab = Vocabulary(char_type='bichar', min_char_count=1)
                 bichar_vocab.build_vocab(train_examples+dev_examples)
                 bichar_emb = StaticEmbedding(bichar_vocab, model_path='cpt/gigaword/bi.ite50.vec',
                                              only_norm_found_vector=True).emb_vectors
