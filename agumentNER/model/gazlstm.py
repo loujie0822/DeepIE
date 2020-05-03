@@ -88,7 +88,7 @@ class GazLSTM(nn.Module):
                 p.requires_grad = False
 
         if self.gpu:
-            self.gaz_embedding = self.gaz_embedding.cuda()
+            # self.gaz_embedding = self.gaz_embedding.cuda()
             self.word_embedding = self.word_embedding.cuda()
             if self.use_biword:
                 self.biword_embedding = self.biword_embedding.cuda()
