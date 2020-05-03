@@ -17,6 +17,14 @@ from utils.optimizer_util import set_optimizer
 logger = logging.getLogger(__name__)
 
 
+def lr_decay(optimizer, epoch, decay_rate, init_lr):
+    lr = init_lr * ((1 - decay_rate) ** epoch)
+    print(" Learning rate is setted as:", lr)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    return optimizer
+
+
 class Trainer(object):
 
     def __init__(self, args, data_loaders, examples, model_conf):
@@ -64,6 +72,8 @@ class Trainer(object):
         self.model.train()
         step_gap = int(int(len(self.eval_file_choice['train']) / args.train_batch_size) / 20)
         for epoch in range(int(args.epoch_num)):
+
+            self.optimizer = lr_decay(self.optimizer, epoch, 0.05, args.learning_rate)
 
             global_loss = 0.0
 
