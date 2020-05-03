@@ -62,7 +62,7 @@ def get_args():
     parser.add_argument("--max_len", default=1000, type=int)
     parser.add_argument('--word_emb_dim', type=int, default=300)
     parser.add_argument('--char_emb_dim', type=int, default=300)
-    parser.add_argument('--hidden_size', type=int, default=300)
+    parser.add_argument('--hidden_size', type=int, default=150)
     parser.add_argument('--num_layers', type=int, default=2)
     parser.add_argument('--dropout', type=int, default=0.5)
     parser.add_argument('--rnn_encoder', type=str, default='lstm', help="must choose in blow: lstm or gru")
@@ -96,7 +96,7 @@ def bulid_dataset(args, debug=False):
         char_emb, bichar_emb, bichar_vocab = None, None, None
         if args.use_static_emb:
             char_emb = StaticEmbedding(char_vocab, model_path='cpt/gigaword/uni.ite50.vec',
-                                       only_norm_found_vector=False).emb_vectors
+                                       only_norm_found_vector=True).emb_vectors
             if args.bi_char:
                 bichar_vocab = Vocabulary(char_type='bichar', min_char_count=2)
                 bichar_vocab.build_vocab(train_examples+dev_examples)
