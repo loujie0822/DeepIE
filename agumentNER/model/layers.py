@@ -198,8 +198,7 @@ import math, copy, time
 #         for layer in self.layers:
 #             x = layer(x, mask)
 #         return self.norm(x)
-
-
+from model.transformer import TransformerEncoder
 
 
 class NERmodel(nn.Module):
@@ -216,7 +215,26 @@ class NERmodel(nn.Module):
         #     self.cnn = CNNmodel(input_dim, hidden_dim, num_layer, dropout, gpu)
         #
         # ## attention model
-        # if self.model_type == 'transformer':
+        if self.model_type == 'transformer':
+            n_head = 6
+            head_dims = 80
+            num_layers = 2
+            d_model = n_head * head_dims
+            feedforward_dim = int(2 * d_model)
+            dropout = 0.15
+            fc_dropout = 0.4
+            after_norm = 1
+            attn_type='adatrans'
+            scale = attn_type == 'transformer'
+
+            self.in_fc = nn.Linear(input_dim, d_model)
+
+            self.transformer = TransformerEncoder(num_layers, d_model, n_head, feedforward_dim, dropout,
+                                                  after_norm=after_norm, attn_type=attn_type,
+                                                  scale=False, dropout_attn=scale,
+                                                  pos_embed=None)
+            self.fc_dropout = nn.Dropout(fc_dropout)
+
         #     self.attention_model = AttentionModel(d_input=input_dim, d_model=hidden_dim, d_ff=2*hidden_dim, head=4, num_layer=num_layer, dropout=dropout)
         #     for p in self.attention_model.parameters():
         #         if p.dim() > 1:
@@ -234,8 +252,10 @@ class NERmodel(nn.Module):
         # if self.model_type == 'cnn':
         #     feature_out_d = self.cnn(input)
         #
-        # if self.model_type == 'transformer':
-        #     feature_out_d = self.attention_model(input, mask)
+        if self.model_type == 'transformer':
+            chars = self.in_fc(input)
+            chars = self.transformer(chars, mask)
+            feature_out_d = self.fc_dropout(chars)
 
         return feature_out_d
 

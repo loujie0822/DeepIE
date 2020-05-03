@@ -69,7 +69,7 @@ class GazLSTM(nn.Module):
             if self.bilstm_flag:
                 self.hidden_dim *= 2
             self.NERmodel = NERmodel(model_type='lstm', input_dim=char_feature_dim, hidden_dim=lstm_hidden, num_layer=self.lstm_layer, biflag=self.bilstm_flag)
-
+            self.hidden2tag = nn.Linear(self.hidden_dim, data.label_alphabet_size + 2)
         ## cnn model
         if self.model_type == 'cnn':
             self.NERmodel = NERmodel(model_type='cnn', input_dim=char_feature_dim, hidden_dim=self.hidden_dim, num_layer=self.num_layer, dropout=data.HP_dropout, gpu=self.gpu)
@@ -77,9 +77,9 @@ class GazLSTM(nn.Module):
         ## attention model
         if self.model_type == 'transformer':
             self.NERmodel = NERmodel(model_type='transformer', input_dim=char_feature_dim, hidden_dim=self.hidden_dim, num_layer=self.num_layer, dropout=data.HP_dropout)
-
+            self.hidden2tag = nn.Linear(480, data.label_alphabet_size + 2)
         self.drop = nn.Dropout(p=data.HP_dropout)
-        self.hidden2tag = nn.Linear(self.hidden_dim, data.label_alphabet_size+2)
+
         self.crf = CRF(data.label_alphabet_size, self.gpu)
 
         if self.use_bert:
@@ -126,7 +126,7 @@ class GazLSTM(nn.Module):
         #     word_input_cat = torch.cat([word_input_cat, outputs], dim=-1)
 
 
-        feature_out_d = self.NERmodel(word_input_cat)
+        feature_out_d = self.NERmodel(word_input_cat,word_inputs.ne(0))
 
         tags = self.hidden2tag(feature_out_d)
 

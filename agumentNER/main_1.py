@@ -450,9 +450,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_iter', default=100, type=int)
     parser.add_argument('--num_layer', default=4, type=int)
     parser.add_argument('--lr', type=float, default=0.0015)
-    parser.add_argument('--batch_size', type=int, default=10)
+    parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--hidden_dim', type=int, default=300)
-    parser.add_argument('--model_type', default='lstm')
+    parser.add_argument('--model_type', default='transformer')
     parser.add_argument('--drop', type=float, default=0.5)
 
     parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=True)
@@ -483,8 +483,8 @@ if __name__ == '__main__':
     save_data_name = args.savedset
     gpu = torch.cuda.is_available()
 
-    char_emb = "data/gigaword_chn.all.a2b.uni.ite50.vec"
-    bichar_emb = "data/gigaword_chn.all.a2b.bi.ite50.vec"
+    char_emb = "data/uni.ite50.vec"
+    bichar_emb = "data/bi.ite50.vec"
     gaz_file = "data/ctb.50d.vec"
 
     sys.stdout.flush()
@@ -539,7 +539,7 @@ if __name__ == '__main__':
             set_seed(seed_num)
         print('data.use_biword=', data.use_bigram)
         data.HP_batch_size=10
-        train(data, save_model_dir, seg,debug=True)
+        train(data, save_model_dir, seg,debug=False)
     elif status == 'test':
         print('Loading processed data')
         with open(save_data_name, 'rb') as fp:
