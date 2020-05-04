@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-import models.ner_net.lstm_crf as ner
+import models.ner_net.lstm_crf_v2 as ner
 from models.ner_net.tener import TENER
 from utils.metrics import SpanFPreRecMetric
 from utils.optimizer_util import set_optimizer
