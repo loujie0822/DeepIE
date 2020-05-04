@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
+import warnings
 
+warnings.filterwarnings("ignore")
 
 import argparse
 import copy
@@ -537,6 +539,8 @@ if __name__ == '__main__':
             with open(save_data_name, 'wb') as f:
                 pickle.dump(data, f)
             set_seed(seed_num)
+
+        data.show_data_summary()
         print('data.use_biword=', data.use_bigram)
         print('data.HP_batch_size=', data.HP_batch_size)
         train(data, save_model_dir, seg,debug=False)

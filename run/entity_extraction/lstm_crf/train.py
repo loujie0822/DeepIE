@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-import models.ner_net.lstm_crf_v2 as ner
+import models.ner_net.lstm_crf as ner
 from models.ner_net.tener import TENER
 from utils.metrics import SpanFPreRecMetric
 from utils.optimizer_util import set_optimizer
@@ -73,7 +73,7 @@ class Trainer(object):
         step_gap = int(int(len(self.eval_file_choice['train']) / args.train_batch_size) / 20)
         for epoch in range(int(args.epoch_num)):
 
-            self.optimizer = lr_decay(self.optimizer, epoch, 0.05, args.learning_rate)
+            # self.optimizer = lr_decay(self.optimizer, epoch, 0.05, args.learning_rate)
 
             global_loss = 0.0
 
