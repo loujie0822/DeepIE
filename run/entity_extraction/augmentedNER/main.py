@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import warnings
 
+from layers.encoders.transformers.bert.bert_optimization import BertAdam
+
 warnings.filterwarnings("ignore")
 
 import argparse
@@ -235,6 +237,14 @@ def train(data, save_model_dir, seg=True, debug=False):
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = optim.Adamax(parameters, lr=data.HP_lr)
 
+    if data.warm_up:
+        print('using warm_up...')
+        num_train_optimization_steps = int(len(data.train_Ids) / data.HP_batch_size) * data.HP_iteration
+        optimizer = BertAdam(parameters,
+                             lr=data.HP_lr,
+                             warmup=0.01,
+                             t_total=num_train_optimization_steps)
+
     best_dev = -1
     best_dev_p = -1
     best_dev_r = -1
@@ -248,7 +258,8 @@ def train(data, save_model_dir, seg=True, debug=False):
         epoch_start = time.time()
         temp_start = epoch_start
         print(("Epoch: %s/%s" % (idx, data.HP_iteration)))
-        optimizer = lr_decay(optimizer, idx, data.HP_lr_decay, data.HP_lr)
+        if not data.warm_up:
+            optimizer = lr_decay(optimizer, idx, data.HP_lr_decay, data.HP_lr)
         instance_count = 0
         sample_loss = 0
         batch_loss = 0
@@ -417,6 +428,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_iter', default=100, type=int)
     parser.add_argument('--num_layer', default=4, type=int)
     parser.add_argument('--lr', type=float, default=0.0015)
+    parser.add_argument('--warm_up', dest='warm_up', action='store_true', default=False)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--hidden_dim', type=int, default=300)
     parser.add_argument('--model_type', default='transformer')
@@ -474,6 +486,7 @@ if __name__ == '__main__':
             data.HP_use_count = args.use_count
             data.model_type = args.model_type
             data.use_bert = args.use_bert
+            data.warm_up = args.warm_up
         else:
             data = Data()
             data.HP_gpu = gpu
@@ -490,6 +503,7 @@ if __name__ == '__main__':
             data.HP_use_count = args.use_count
             data.model_type = args.model_type
             data.use_bert = args.use_bert
+            data.warm_up = args.warm_up
 
             data_initialization(data, train_file, dev_file, test_file)
             data.generate_instance(train_file, 'train')

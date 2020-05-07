@@ -52,10 +52,10 @@ class GazLSTM(nn.Module):
         #                              num_layer=self.num_layer, dropout=data.HP_dropout, gpu=self.gpu)
         #
         # ## attention model
-        # if self.model_type == 'transformer':
-        #     self.NERmodel = NERmodel(model_type='transformer', input_dim=char_feature_dim, hidden_dim=self.hidden_dim,
-        #                              num_layer=self.num_layer, dropout=data.HP_dropout)
-        #     self.hidden2tag = nn.Linear(480, data.label_alphabet_size + 2)
+        if self.model_type == 'transformer':
+            self.NERmodel = NERmodel(model_type='transformer', input_dim=char_feature_dim, hidden_dim=self.hidden_dim,
+                                     num_layer=self.num_layer, dropout=data.HP_dropout)
+            self.hidden2tag = nn.Linear(480, data.label_alphabet_size + 2)
 
         self.drop = nn.Dropout(p=data.HP_dropout)
 
