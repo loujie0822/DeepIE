@@ -339,7 +339,7 @@ def train(data, save_model_dir, seg=True, debug=False):
             best_dev_r = r
 
         # ## decode test
-        speed, acc, p, r, f, pred_labels, gazs = evaluate(data, model, "test")
+        speed, acc, p, r, f, pred_labels = evaluate(data, model, "test")
         test_finish = time.time()
         test_cost = test_finish - dev_finish
         if seg:
