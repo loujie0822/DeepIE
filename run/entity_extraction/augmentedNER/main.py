@@ -376,7 +376,7 @@ def load_model_decode(model_dir, data, name, gpu, seg=True):
 
     print(("Decode %s data ..." % (name)))
     start_time = time.time()
-    speed, acc, p, r, f, pred_results, gazs = evaluate(data, model, name)
+    speed, acc, p, r, f, pred_results = evaluate(data, model, name)
     end_time = time.time()
     time_cost = end_time - start_time
     if seg:
