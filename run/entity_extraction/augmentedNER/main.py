@@ -22,12 +22,10 @@ from run.entity_extraction.augmentedNER.data import Data
 from run.entity_extraction.augmentedNER.metric import get_ner_fmeasure
 
 
-def data_initialization(data, gaz_file, train_file, dev_file, test_file):
+def data_initialization(data, train_file, dev_file, test_file):
     data.build_alphabet(train_file)
     data.build_alphabet(dev_file)
-    # data.build_gaz_file(gaz_file)
-    # data.build_gaz_alphabet(train_file,count=True)
-    # data.build_gaz_alphabet(dev_file,count=True)
+    # data.build_alphabet(test_file)
     print(data.word_alphabet_size)
     print(data.biword_alphabet_size)
     data.fix_alphabet()
@@ -148,7 +146,7 @@ def evaluate(data, model, name):
     start_time = time.time()
     train_num = len(instances)
     total_batch = train_num // batch_size + 1
-    gazes = []
+
     for batch_id in range(total_batch):
         with torch.no_grad():
             start = batch_id * batch_size
@@ -156,26 +154,22 @@ def evaluate(data, model, name):
             if end > train_num:
                 end = train_num
             instance = instances[start:end]
+
             if not instance:
                 continue
-            batch_word, batch_biword, batch_wordlen, batch_label, mask = batchify_with_label(
-                instance, data.HP_gpu, data.HP_num_layer, True)
-            tag_seq, gaz_match = model(batch_word, batch_biword, batch_wordlen,mask)
-            #
-            # gaz_list = [data.gaz_alphabet.get_instance(id) for batchlist in gaz_match if len(batchlist) > 0 for id in
-            #             batchlist]
-            # gazes.append(gaz_list)
+            batch_word, batch_biword, batch_wordlen, batch_label, mask, batch_bert, bert_mask = batchify_with_label(
+                instance, data.HP_gpu)
+            tag_seq = model(batch_word, batch_biword, batch_wordlen, mask, batch_bert, bert_mask)
 
-            if name == "dev":
-                pred_label, gold_label = recover_label(tag_seq, batch_label, mask, data.label_alphabet)
-            else:
-                pred_label, gold_label = recover_label(tag_seq, batch_label, mask, data.label_alphabet)
+            pred_label, gold_label = recover_label(tag_seq, batch_label, mask, data.label_alphabet)
             pred_results += pred_label
+            # todo 检查gold_label
+            # gold_label_ = data.train_texts[start:end][0][2]
             gold_results += gold_label
     decode_time = time.time() - start_time
     speed = len(instances) / decode_time
     acc, p, r, f = get_ner_fmeasure(gold_results, pred_results, data.tagScheme)
-    return speed, acc, p, r, f, pred_results, gazes
+    return speed, acc, p, r, f, pred_results
 
 
 def get_text_input(self, caption):
@@ -190,19 +184,13 @@ def get_text_input(self, caption):
     return caption
 
 
-def batchify_with_label(input_batch_list, gpu, num_layer, volatile_flag=False):
+def batchify_with_label(input_batch_list, gpu):
     batch_size = len(input_batch_list)
     words = [sent[0] for sent in input_batch_list]
     biwords = [sent[1] for sent in input_batch_list]
-    # gazs = [sent[3] for sent in input_batch_list]
-    labels = [sent[4] for sent in input_batch_list]
-    # layer_gazs = [sent[5] for sent in input_batch_list]
-    # gaz_count = [sent[6] for sent in input_batch_list]
-    # gaz_chars = [sent[7] for sent in input_batch_list]
-    # gaz_mask = [sent[8] for sent in input_batch_list]
-    # gazchar_mask = [sent[9] for sent in input_batch_list]
+    labels = [sent[2] for sent in input_batch_list]
     ### bert tokens
-    # bert_ids = [sent[10] for sent in input_batch_list]
+    bert_ids = [sent[3] for sent in input_batch_list]
 
     word_seq_lengths = torch.LongTensor(list(map(len, words)))
     max_seq_len = word_seq_lengths.max()
@@ -211,55 +199,32 @@ def batchify_with_label(input_batch_list, gpu, num_layer, volatile_flag=False):
     label_seq_tensor = autograd.Variable(torch.zeros((batch_size, max_seq_len))).long()
     mask = autograd.Variable(torch.zeros((batch_size, max_seq_len))).byte()
     ### bert seq tensor
-    # bert_seq_tensor = autograd.Variable(torch.zeros((batch_size, max_seq_len + 2))).long()
-    # bert_mask = autograd.Variable(torch.zeros((batch_size, max_seq_len + 2))).long()
+    bert_seq_tensor = autograd.Variable(torch.zeros((batch_size, max_seq_len + 2))).long()
+    bert_mask = autograd.Variable(torch.zeros((batch_size, max_seq_len + 2))).long()
 
-    # gaz_num = [len(layer_gazs[i][0][0]) for i in range(batch_size)]
-    # max_gaz_num = max(gaz_num)
-    # layer_gaz_tensor = torch.zeros(batch_size, max_seq_len, 4, max_gaz_num).long()
-    # gaz_count_tensor = torch.zeros(batch_size, max_seq_len, 4, max_gaz_num).float()
-    # gaz_len = [len(gaz_chars[i][0][0][0]) for i in range(batch_size)]
-    # max_gaz_len = max(gaz_len)
-    # gaz_chars_tensor = torch.zeros(batch_size, max_seq_len, 4, max_gaz_num, max_gaz_len).long()
-    # gaz_mask_tensor = torch.ones(batch_size, max_seq_len, 4, max_gaz_num).byte()
-    # gazchar_mask_tensor = torch.ones(batch_size, max_seq_len, 4, max_gaz_num, max_gaz_len).byte()
-
-    for b, (seq, biseq, label, seqlen) in enumerate(
-            zip(words, biwords, labels, word_seq_lengths)):
+    for b, (seq, biseq, label, seqlen, bert_id) in enumerate(
+            zip(words, biwords, labels, word_seq_lengths, bert_ids)):
         word_seq_tensor[b, :seqlen] = torch.LongTensor(seq)
         biword_seq_tensor[b, :seqlen] = torch.LongTensor(biseq)
         label_seq_tensor[b, :seqlen] = torch.LongTensor(label)
-        # layer_gaz_tensor[b, :seqlen, :, :gaznum] = torch.LongTensor(layergaz)
         mask[b, :seqlen] = torch.Tensor([1] * int(seqlen))
-        # bert_mask[b, :seqlen + 2] = torch.LongTensor([1] * int(seqlen + 2))
-        # gaz_mask_tensor[b, :seqlen, :, :gaznum] = torch.ByteTensor(gazmask)
-        # gaz_count_tensor[b, :seqlen, :, :gaznum] = torch.FloatTensor(gazcount)
-        # gaz_count_tensor[b, seqlen:] = 1
-        # gaz_chars_tensor[b, :seqlen, :, :gaznum, :gazlen] = torch.LongTensor(gazchar)
-        # gazchar_mask_tensor[b, :seqlen, :, :gaznum, :gazlen] = torch.ByteTensor(gazchar_mask)
-
+        bert_mask[b, :seqlen + 2] = torch.LongTensor([1] * int(seqlen + 2))
         ##bert
-        # bert_seq_tensor[b, :seqlen + 2] = torch.LongTensor(bert_id)
+        bert_seq_tensor[b, :seqlen + 2] = torch.LongTensor(bert_id)
 
     if gpu:
         word_seq_tensor = word_seq_tensor.cuda()
         biword_seq_tensor = biword_seq_tensor.cuda()
         word_seq_lengths = word_seq_lengths.cuda()
         label_seq_tensor = label_seq_tensor.cuda()
-        # layer_gaz_tensor = layer_gaz_tensor.cuda()
-        # gaz_chars_tensor = gaz_chars_tensor.cuda()
-        # gaz_mask_tensor = gaz_mask_tensor.cuda()
-        # gazchar_mask_tensor = gazchar_mask_tensor.cuda()
-        # gaz_count_tensor = gaz_count_tensor.cuda()
         mask = mask.cuda()
-        # bert_seq_tensor = bert_seq_tensor.cuda()
-        # bert_mask = bert_mask.cuda()
+        bert_seq_tensor = bert_seq_tensor.cuda()
+        bert_mask = bert_mask.cuda()
 
-    # print(bert_seq_tensor.type())
-    return word_seq_tensor, biword_seq_tensor, word_seq_lengths, label_seq_tensor, mask
+    return word_seq_tensor, biword_seq_tensor, word_seq_lengths, label_seq_tensor, mask, bert_seq_tensor, bert_mask
 
 
-def train(data, save_model_dir, seg=True,debug=False):
+def train(data, save_model_dir, seg=True, debug=False):
     print("Training with {} model.".format(data.model_type))
 
     # data.show_data_summary()
@@ -309,12 +274,12 @@ def train(data, save_model_dir, seg=True,debug=False):
             if not instance:
                 continue
 
-            batch_word, batch_biword, batch_wordlen, batch_label, mask= batchify_with_label(
-                instance, data.HP_gpu, data.HP_num_layer)
+            batch_word, batch_biword, batch_wordlen, batch_label, mask, batch_bert, bert_mask = batchify_with_label(
+                instance, data.HP_gpu)
 
             instance_count += 1
             loss, tag_seq = model.neg_log_likelihood_loss(batch_word, batch_biword, batch_wordlen, mask,
-                                                          batch_label)
+                                                          batch_label, batch_bert, bert_mask)
 
             right, whole = predict_check(tag_seq, batch_label, mask)
             right_token += right
@@ -348,7 +313,7 @@ def train(data, save_model_dir, seg=True,debug=False):
         print(("Epoch: %s training finished. Time: %.2fs, speed: %.2fst/s,  total loss: %s" % (
             idx, epoch_cost, train_num / epoch_cost, total_loss)))
 
-        speed, acc, p, r, f, pred_labels, gazs = evaluate(data, model, "dev")
+        speed, acc, p, r, f, pred_labels = evaluate(data, model, "dev")
         dev_finish = time.time()
         dev_cost = dev_finish - epoch_finish
 
@@ -518,8 +483,6 @@ if __name__ == '__main__':
             data.HP_iteration = args.num_iter
             data.use_bigram = args.use_biword
             data.HP_dropout = args.drop
-            data.norm_gaz_emb = False
-            data.HP_fix_gaz_emb = False
             data.label_comment = args.labelcomment
             data.result_file = args.resultfile
             data.HP_lr = args.lr
@@ -527,13 +490,12 @@ if __name__ == '__main__':
             data.HP_use_count = args.use_count
             data.model_type = args.model_type
             data.use_bert = args.use_bert
-            data_initialization(data, gaz_file, train_file, dev_file, test_file)
-            data.generate_instance_with_gaz(train_file, 'train')
-            data.generate_instance_with_gaz(dev_file, 'dev')
-            # data.generate_instance_with_gaz(test_file, 'test')
+
+            data_initialization(data, train_file, dev_file, test_file)
+            data.generate_instance(train_file, 'train')
+            data.generate_instance(dev_file, 'dev')
             data.build_word_pretrain_emb(char_emb)
             data.build_biword_pretrain_emb(bichar_emb)
-            # data.build_gaz_pretrain_emb(gaz_file)
 
             print('Dumping data')
             with open(save_data_name, 'wb') as f:
@@ -543,7 +505,7 @@ if __name__ == '__main__':
         data.show_data_summary()
         print('data.use_biword=', data.use_bigram)
         print('data.HP_batch_size=', data.HP_batch_size)
-        train(data, save_model_dir, seg,debug=False)
+        train(data, save_model_dir, seg, debug=False)
     elif status == 'test':
         print('Loading processed data')
         with open(save_data_name, 'rb') as fp:
@@ -552,15 +514,12 @@ if __name__ == '__main__':
         data.HP_iteration = args.num_iter
         data.label_comment = args.labelcomment
         data.result_file = args.resultfile
-        # data.HP_use_gaz = args.use_gaz
         data.HP_lr = args.lr
         data.use_bigram = args.use_biword
         data.HP_use_char = args.use_char
         data.model_type = args.model_type
         data.HP_hidden_dim = args.hidden_dim
         data.HP_use_count = args.use_count
-        data.generate_instance_with_gaz(test_file, 'test')
         load_model_decode(save_model_dir, data, 'test', gpu, seg)
-
     else:
         print("Invalid argument! Please use valid arguments! (train/test/decode)")
