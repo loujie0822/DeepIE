@@ -239,8 +239,14 @@ def train(data, save_model_dir, seg=True, debug=False):
 
     if data.warm_up:
         print('using warm_up...')
+        param_optimizer = list(model.named_parameters())
+        no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+            {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
         num_train_optimization_steps = int(len(data.train_Ids) / data.HP_batch_size) * data.HP_iteration
-        optimizer = BertAdam(parameters,
+        optimizer = BertAdam(optimizer_grouped_parameters,
                              lr=data.HP_lr,
                              warmup=0.01,
                              t_total=num_train_optimization_steps)
