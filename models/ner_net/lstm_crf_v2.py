@@ -3,11 +3,11 @@ import copy
 import warnings
 
 import torch
-import torch.nn.functional as F
 from torch import nn
 
-from layers.decoders.crf import CRF
 from layers.encoders.rnns.stacked_rnn import StackedBRNN
+# from layers.decoders.crf import CRF
+from layers.ner_layers.crf import CRF
 
 warnings.filterwarnings("ignore")
 
@@ -65,8 +65,12 @@ class NERNet(nn.Module):
         # self.sentence_encoder = SentenceEncoder(args, embed_size)
         self.sentence_encoder = nn.LSTM(embed_size, args.hidden_size, num_layers=1, batch_first=True,
                                         bidirectional=True)
-        self.emission = nn.Linear(args.hidden_size * 2, len(model_conf['entity_type']))
-        self.crf = CRF(len(model_conf['entity_type']), batch_first=True)
+        self.emission = nn.Linear(args.hidden_size * 2, len(model_conf['entity_type']) + 2)
+        # self.crf = CRF(len(model_conf['entity_type']), batch_first=True)
+        gpu = True
+        self.crf = CRF(len(model_conf['entity_type']), gpu=gpu)
+        if gpu:
+            self.crf = self.crf.cuda()
 
     def forward(self, char_id, bichar_id, label_id=None, is_eval=False):
         # use anti-mask for answers-locator
@@ -84,18 +88,18 @@ class NERNet(nn.Module):
 
         bio_mask = char_id != 0
         emission = self.emission(sen_encoded)
-        emission = F.log_softmax(emission, dim=-1)
+        # emission = F.log_softmax(emission, dim=-1)
 
         if not is_eval:
-            crf_loss = -self.crf(emission, label_id, mask=bio_mask, reduction='mean')
+            # crf_loss = -self.crf(emission, label_id, mask=bio_mask, reduction='mean')
+            crf_loss = self.crf.neg_log_likelihood_loss(emission, bio_mask, label_id)
             return crf_loss
         else:
-            pred = self.crf.decode(emissions=emission, mask=bio_mask)
-
+            _, pred = self.crf._viterbi_decode(emission, bio_mask)
             # TODO:check
-            max_len = char_id.size(1)
-            temp_tag = copy.deepcopy(pred)
-            for line in temp_tag:
-                line.extend([0] * (max_len - len(line)))
-            ent_pre = torch.tensor(temp_tag).to(emission.device)
-            return ent_pre
+            # max_len = char_id.size(1)
+            # temp_tag = copy.deepcopy(pred)
+            # for line in temp_tag:
+            #     line.extend([0] * (max_len - len(line)))
+            # ent_pre = torch.tensor(temp_tag).to(emission.device)
+            return pred

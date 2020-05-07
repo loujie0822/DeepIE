@@ -149,7 +149,6 @@ class ERENet(BertPreTrainedModel):
                 subject = torch.cat([sub_start_encoder, sub_end_encoder], 1)
                 context_encoder = self.LayerNorm(bert_encoders, subject)
 
-                # context_encoder = self.LayerNorm(context_encoder)
                 po_pred = self.po_dense(context_encoder).reshape(subject_encoder.size(0), -1, self.classes_num, 2)
 
                 if flag:

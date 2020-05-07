@@ -13,6 +13,17 @@ from tqdm import tqdm
 from utils.data_util import padding
 from utils.file_util import _read_conll
 
+
+def normalize_word(word):
+    new_word = ""
+    for char in word:
+        if char.isdigit():
+            new_word += '0'
+        else:
+            new_word += char
+    return new_word
+
+
 class Example(object):
     def __init__(self,
                  p_id=None,
@@ -64,14 +75,25 @@ class Reader(object):
                     self.ent_type[gold_] = tag_num
                     tag_num += 1
 
-            bichars = None
-            if self.bi_char:
-                bichars = [c1 + c2 for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
+            chars=[normalize_word(char) for char in chars]
+            bichars = [normalize_word(c1 + c2) for c1, c2 in zip(chars, chars[1:] + ['<eos>'])]
+            # segchars = jieba.lcut(''.join(chars))
+            # soft_word = []
+            # for seg in segchars:
+            #     if len(seg) == 1:
+            #         soft_word.append('S')
+            #     else:
+            #         soft_word.append('B')
+            #         if len(seg) > 2:
+            #             for _ in range(len(seg) - 2):
+            #                 soft_word.append('M')
+            #         soft_word.append('E')
+            # assert len(soft_word) == len(chars)
             examples.append(
                 Example(
                     char=chars,
                     bichar=bichars,
-                    gold_answer=gold_answer
+                    gold_answer=gold_answer,
                 )
             )
         logging.info("{} total size is  {} ".format(data_type, len(examples)))
@@ -80,7 +102,7 @@ class Reader(object):
 
 class Vocabulary(object):
 
-    def __init__(self, char_type='char', special_tokens=[], min_char_count=-1, lower=True):
+    def __init__(self, char_type='char', special_tokens=[], min_char_count=-1, lower=False):
 
         self.vocab = []
         self.emb_mat = None
@@ -89,7 +111,7 @@ class Vocabulary(object):
         self.special_tokens = special_tokens
         self.char_type = char_type
         self.min_char_count = min_char_count
-        self.lower = True
+        self.lower = lower
         self.padding = "<pad>"
         self.unknown = "<unk>"
 
@@ -110,11 +132,11 @@ class Vocabulary(object):
 
         for example in tqdm(examples):
             if self.char_type == 'char':
-                for char in example.char:
-                    self._add_word(char)
+                sentence = example.char
             elif self.char_type == 'bichar':
-                for char in example.bichar:
-                    self._add_word(char)
+                sentence = example.bichar
+            for char in sentence:
+                self._add_word(char)
 
         for w, v in self.counter.most_common():
             if v >= self.min_char_count:
@@ -184,7 +206,7 @@ class StaticEmbedding(object):
 
         return embed
 
-    def _load_with_vocab(self, model_path, vocab, error='ignore', padding='<pad>', unknown='<unk>', dtype=np.float32):
+    def _load_with_vocab(self, model_path, vocab, error='ignoree', padding='<pad>', unknown='<unk>', dtype=np.float32):
 
         assert isinstance(vocab, Vocabulary), "Only Vocabulary is supported."
         if not os.path.exists(model_path):
@@ -236,6 +258,8 @@ class StaticEmbedding(object):
                     if found_unknown:  # 如果有unkonwn，用unknown初始化
                         matrix[index] = matrix[vocab.word2idx[unknown]]
                     else:
+                        # todo check
+                        # matrix[index] = matrix[vocab.word2idx[unknown]]
                         matrix[index] = None
             vectors = self._randomly_init_embed(len(matrix), dim)
             for index_in_vocab, vec in matrix.items():
@@ -245,14 +269,16 @@ class StaticEmbedding(object):
 
 
 class Feature(object):
-    def __init__(self, args, char_vocab, bichar_vocab=None, entity_type=None):
+    def __init__(self, args, char_vocab, bichar_vocab=None, entity_type=None, do_lower=False):
 
         self.char_vocab = char_vocab
         self.bichar_vocab = bichar_vocab
         self.max_len = args.max_len
         self.entity_type = entity_type
+        self.do_lower = do_lower
 
     def token2id(self, token, vocab_type='char'):
+        token = token.lower() if self.do_lower else token
         word2idx_dict = self.char_vocab
         if vocab_type == 'bichar':
             word2idx_dict = self.bichar_vocab
@@ -267,6 +293,9 @@ class Feature(object):
 
         logging.info("Processing {} examples...".format(data_type))
 
+        if data_type != 'train':
+            self.max_len = 2000
+
         examples2features = list()
         index = 0
         for example in tqdm(examples):
@@ -274,14 +303,17 @@ class Feature(object):
             chars = example.char[:self.max_len]
             bichars = example.bichar[:self.max_len]
             gold_answers = example.gold_answer[:self.max_len]
+
             char_id = np.zeros(len(chars), dtype=np.int)
             bichar_id = np.zeros(len(bichars), dtype=np.int)
             label_id = np.zeros(len(gold_answers), dtype=np.int)
 
             for i, token in enumerate(chars):
                 char_id[i] = self.token2id(token, 'char')
-            for i, token in enumerate(bichars):
-                bichar_id[i] = self.token2id(token, 'bichar')
+            if len(self.bichar_vocab) > 1:
+                for i, token in enumerate(bichars):
+                    bichar_id[i] = self.token2id(token, 'bichar')
+
             for i, label in enumerate(gold_answers):
                 label_id[i] = self.entity_type[label]
 
@@ -296,9 +328,6 @@ class Feature(object):
 
         logging.info("Built instances is Completed")
         return NERDataset(examples2features)
-
-    def convert_examples_to_bert_features(self, examples, entity_type, data_type):
-        pass
 
 
 class NERDataset(Dataset):

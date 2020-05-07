@@ -75,7 +75,7 @@ def _read_conll(path, encoding='utf-8', indexes=2, dropna=True):
         if start != '':
             sample.append(start.split())
         for line_idx, line in enumerate(f, 1):
-            line = line[:-1]
+            line = line.strip()
             if line == '':
                 if len(sample):
                     try:
@@ -91,12 +91,12 @@ def _read_conll(path, encoding='utf-8', indexes=2, dropna=True):
                 continue
             else:
                 sample.append(line.split('\t'))
-        # if len(sample) > 0:
-        #     try:
-        #         res = parse_conll(sample)
-        #         yield line_idx, res
-        #     except Exception as e:
-        #         if dropna:
-        #             return
-        #         logger.error('invalid instance ends at line: {}'.format(line_idx))
-        #         raise e
+        if len(sample) > 0:
+            try:
+                res = parse_conll(sample)
+                yield line_idx, res
+            except Exception as e:
+                if dropna:
+                    return
+                logger.error('invalid instance ends at line: {}'.format(line_idx))
+                raise e

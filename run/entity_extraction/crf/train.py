@@ -10,37 +10,24 @@ from torch import nn
 from tqdm import tqdm
 
 import models.ner_net.lstm_crf as ner
-from models.ner_net.tener import TENER
-from utils.metrics import SpanFPreRecMetric
 from utils.optimizer_util import set_optimizer
 
 logger = logging.getLogger(__name__)
 
 
-def lr_decay(optimizer, epoch, decay_rate, init_lr):
-    lr = init_lr * ((1 - decay_rate) ** epoch)
-    print(" Learning rate is setted as:", lr)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-    return optimizer
-
-
 class Trainer(object):
 
-    def __init__(self, args, data_loaders, examples, model_conf):
-
-        if args.encoder == 'tener':
-            self.model = TENER(model_conf)
+    def __init__(self, args, data_loaders, examples, char_emb, ent_conf):
+        if args.use_bert:
+            self.model = None
         else:
-            self.model = ner.NERNet(args, model_conf)
+            self.model = ner.NERNet(args, char_emb,ent_conf)
 
         self.args = args
         self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
         self.n_gpu = torch.cuda.device_count()
-
-        self.ent2id = model_conf['entity_type']
-        self.id2ent = {item: key for key, item in self.ent2id.items()}
-        self.metric = SpanFPreRecMetric(tag_type=self.id2ent)
+        self.id2ent = {item: key for key, item in ent_conf.items()}
+        self.ent2id = ent_conf
 
         random.seed(args.seed)
         np.random.seed(args.seed)
@@ -48,6 +35,7 @@ class Trainer(object):
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
         self.model.to(self.device)
+        # self.resume(args)
         logging.info('total gpu num is {}'.format(self.n_gpu))
         if self.n_gpu > 1:
             self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
@@ -70,17 +58,15 @@ class Trainer(object):
         best_f1 = 0.0
         patience_stop = 0
         self.model.train()
-        step_gap = int(int(len(self.eval_file_choice['train']) / args.train_batch_size) / 20)
+        step_gap = 20
         for epoch in range(int(args.epoch_num)):
-
-            # self.optimizer = lr_decay(self.optimizer, epoch, 0.05, args.learning_rate)
 
             global_loss = 0.0
 
             for step, batch in tqdm(enumerate(self.data_loader_choice[u"train"]), mininterval=5,
                                     desc=u'training at epoch : %d ' % epoch, leave=False, file=sys.stdout):
 
-                loss = self.forward(batch)
+                loss, answer_dict_ = self.forward(batch)
 
                 if step % step_gap == 0:
                     global_loss += loss
@@ -91,8 +77,8 @@ class Trainer(object):
                     global_loss = 0.0
 
             res_dev = self.eval_data_set("dev")
-            if res_dev['f'] >= best_f1:
-                best_f1 = res_dev['f']
+            if res_dev['f1'] >= best_f1:
+                best_f1 = res_dev['f1']
                 logging.info("** ** * Saving fine-tuned model ** ** * ")
                 model_to_save = self.model.module if hasattr(self.model,
                                                              'module') else self.model  # Only save the model it-self
@@ -110,27 +96,28 @@ class Trainer(object):
         checkpoint = torch.load(resume_model_file, map_location='cpu')
         self.model.load_state_dict(checkpoint)
 
-    def forward(self, batch, chosen=u'train', eval=False, detail=False):
+    def forward(self, batch, chosen=u'train', grad=True, eval=False, detail=False):
 
         batch = tuple(t.to(self.device) for t in batch)
 
-        p_ids, char_id, bichar_id, label_id = batch
-        if not eval:
-            loss = self.model(char_id=char_id, bichar_id=bichar_id, label_id=label_id, is_eval=eval)
-            if self.n_gpu > 1:
-                loss = loss.mean()  # mean() to average on multi-gpu.\
+        p_ids, passage_id, label_id = batch
+        loss, pred, gold = self.model(passages=passage_id, label_ids=label_id, is_eval=eval)
 
+        if self.n_gpu > 1:
+            loss = loss.mean()  # mean() to average on multi-gpu.
+
+        if grad:
             loss.backward()
-            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 5)
             loss = loss.item()
             self.optimizer.step()
             self.optimizer.zero_grad()
-            return loss
-        else:
-            pred = self.model(char_id=char_id, bichar_id=bichar_id, label_id=label_id, is_eval=eval)
+
+        if eval:
             eval_file = self.eval_file_choice[chosen]
-            answer_dict = self.metric(p_ids, pred, eval_file)
-            return answer_dict
+            answer_dict_ = convert_stl_contour(self.id2ent, eval_file, p_ids, pred, gold, detail=detail)
+        else:
+            answer_dict_ = None
+        return loss, answer_dict_
 
     def eval_data_set(self, chosen="dev"):
 
@@ -142,14 +129,14 @@ class Trainer(object):
         last_time = time.time()
         with torch.no_grad():
             for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
-                answer_dict_ = self.forward(batch, chosen, eval=True)
+                loss, answer_dict_ = self.forward(batch, chosen, grad=False, eval=True)
                 answer_dict.update(answer_dict_)
         used_time = time.time() - last_time
         logging.info('chosen {} took : {} sec'.format(chosen, used_time))
-        # res = self.evaluate(eval_file, answer_dict, chosen)
+        res = self.evaluate(eval_file, answer_dict, chosen)
         # self.detail_evaluate(eval_file, answer_dict, chosen)
         self.model.train()
-        return self.metric.get_metric()
+        return res
 
     def show(self, chosen="dev"):
 
@@ -160,13 +147,13 @@ class Trainer(object):
         eval_file = self.eval_file_choice[chosen]
         with torch.no_grad():
             for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
-                loss, answer_dict_ = self.forward(batch, chosen, eval=True, detail=True)
+                loss, answer_dict_ = self.forward(batch, chosen, grad=False, eval=True, detail=True)
                 answer_dict.update(answer_dict_)
 
     @staticmethod
     def evaluate(eval_file, answer_dict, chosen):
 
-        em, pre_num, gold_num = 0, 0, 0
+        em,pre_num,gold_num = 0,0,0
         for key, value in answer_dict.items():
             ground_truths = eval_file[int(key)].gold_answer
             value, pred, gold, _, _ = value
@@ -181,3 +168,81 @@ class Trainer(object):
         print("{}/f1: {}, \tPrecision: {},\tRecall: {} ".format(chosen, f1, precision,
                                                                 recall))
         return {'f1': f1, "recall": recall, "precision": precision, 'em': em, 'pre': pre_num, 'gold': gold_num}
+
+
+def convert_stl_contour(id2rel, eval_file, q_ids, predict, gold, detail):
+    answer_dict = dict()
+
+    for qid, pred, gold in zip(q_ids, predict, gold.data.cpu().numpy()):
+        context = eval_file[qid.item()].context
+        seq_len = len(context)
+
+        pred_entities = find_tag_position(pred, seq_len, id2rel)
+        gold_entities = find_tag_position(gold, seq_len, id2rel)
+
+        pred_answer_ = generat_ans(id2rel, pred, pred_entities, seq_len)
+
+        if detail:
+            pred_detail = generat_detail_dict(id2rel, pred, pred_entities)
+            gold_detail = generat_detail_dict(id2rel, gold, gold_entities)
+            answer_dict[str(qid.item())] = [pred_answer_, pred_entities, gold_entities, pred_detail, gold_detail]
+
+        else:
+            answer_dict[str(qid.item())] = [pred_answer_, pred_entities, gold_entities, None, None]
+
+    return answer_dict
+
+
+def generat_detail_dict(tag_ids, tag_list, tag_entity_pos):
+    dict_detail = dict()
+    for i, tag in enumerate(tag_entity_pos):
+        start, end = tag[0], tag[1]
+        detail_name = tag_ids[tag_list[start]].split('-')[1]
+        if detail_name not in dict_detail:
+            dict_detail[detail_name] = [(start, end)]
+        else:
+            dict_detail[detail_name].append((start, end))
+    return dict_detail
+
+
+def generat_ans(tag_ids, tag_list, tag_entity_pos, seq_len):
+    ans_list = ['O'] * seq_len
+    for i, tag in enumerate(tag_entity_pos):
+        start, end = tag[0], tag[1]
+        ans_list[start] = tag_ids[tag_list[start]]
+        for k in range(start + 1, end):
+            ans_list[k] = tag_ids[tag_list[k]]
+    return ans_list
+
+
+def find_raw_context(ans_list, context):
+    new_ans = list()
+    for i, ans in enumerate(ans_list):
+        if ans != 'O':
+            new_ans.append(context[i])
+        else:
+            new_ans.append('*')
+    return ''.join(new_ans)
+
+
+def find_tag_position(find_list, seq_len, id2rel):
+    tag_list = list()
+
+    j = 0
+    while j < seq_len:
+        end = j
+        flag = True
+
+        if find_list[j] % 2 == 0 and find_list[j] != 0:
+            start = j
+            tag = id2rel[find_list[start]].split('-')[1]
+            for k in range(start + 1, seq_len):
+                if find_list[k] != find_list[start] + 1:
+                    end = k - 1
+                    flag = False
+                    break
+            if flag:
+                end = seq_len - 1
+            tag_list.append((start, end + 1, tag))
+        j = end + 1
+    return tag_list
