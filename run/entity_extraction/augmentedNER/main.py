@@ -445,7 +445,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_count', action='store_true', default=True)
-    parser.add_argument('--use_bert', action='store_true', default=True)
+    parser.add_argument('--use_bert', action='store_true', default=False)
 
     args = parser.parse_args()
 
