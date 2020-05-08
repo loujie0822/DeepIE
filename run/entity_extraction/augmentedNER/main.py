@@ -144,7 +144,7 @@ def evaluate(data, model, name):
     gold_results = []
     ## set model in eval model
     model.eval()
-    batch_size = 1
+    batch_size = data.HP_batch_size
     start_time = time.time()
     train_num = len(instances)
     total_batch = train_num // batch_size + 1
