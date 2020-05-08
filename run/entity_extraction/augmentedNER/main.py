@@ -440,12 +440,12 @@ if __name__ == '__main__':
     parser.add_argument('--model_type', default='transformer')
     parser.add_argument('--drop', type=float, default=0.5)
 
-    parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=True)
+    parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_count', action='store_true', default=True)
-    parser.add_argument('--use_bert', action='store_true', default=False)
+    parser.add_argument('--use_bert', action='store_true', default=True)
 
     args = parser.parse_args()
 
