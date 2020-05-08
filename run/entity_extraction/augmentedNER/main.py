@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import warnings
 
+from layers.encoders.transformers.bert.bert_optimization import BertAdam
+
 warnings.filterwarnings("ignore")
 
 import argparse
@@ -142,7 +144,7 @@ def evaluate(data, model, name):
     gold_results = []
     ## set model in eval model
     model.eval()
-    batch_size = 1
+    batch_size = data.HP_batch_size
     start_time = time.time()
     train_num = len(instances)
     total_batch = train_num // batch_size + 1
@@ -235,6 +237,20 @@ def train(data, save_model_dir, seg=True, debug=False):
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     optimizer = optim.Adamax(parameters, lr=data.HP_lr)
 
+    if data.warm_up:
+        print('using warm_up...')
+        param_optimizer = list(model.named_parameters())
+        no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+        optimizer_grouped_parameters = [
+            {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)], 'weight_decay': 0.01},
+            {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+        ]
+        num_train_optimization_steps = int(len(data.train_Ids) / data.HP_batch_size) * data.HP_iteration
+        optimizer = BertAdam(optimizer_grouped_parameters,
+                             lr=data.HP_lr,
+                             warmup=0.01,
+                             t_total=num_train_optimization_steps)
+
     best_dev = -1
     best_dev_p = -1
     best_dev_r = -1
@@ -248,7 +264,8 @@ def train(data, save_model_dir, seg=True, debug=False):
         epoch_start = time.time()
         temp_start = epoch_start
         print(("Epoch: %s/%s" % (idx, data.HP_iteration)))
-        optimizer = lr_decay(optimizer, idx, data.HP_lr_decay, data.HP_lr)
+        if not data.warm_up:
+            optimizer = lr_decay(optimizer, idx, data.HP_lr_decay, data.HP_lr)
         instance_count = 0
         sample_loss = 0
         batch_loss = 0
@@ -339,7 +356,7 @@ def train(data, save_model_dir, seg=True, debug=False):
             best_dev_r = r
 
         # ## decode test
-        speed, acc, p, r, f, pred_labels, gazs = evaluate(data, model, "test")
+        speed, acc, p, r, f, pred_labels = evaluate(data, model, "test")
         test_finish = time.time()
         test_cost = test_finish - dev_finish
         if seg:
@@ -417,12 +434,13 @@ if __name__ == '__main__':
     parser.add_argument('--num_iter', default=100, type=int)
     parser.add_argument('--num_layer', default=4, type=int)
     parser.add_argument('--lr', type=float, default=0.0015)
+    parser.add_argument('--warm_up', dest='warm_up', action='store_true', default=False)
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--hidden_dim', type=int, default=300)
     parser.add_argument('--model_type', default='transformer')
     parser.add_argument('--drop', type=float, default=0.5)
 
-    parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=True)
+    parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
@@ -474,6 +492,7 @@ if __name__ == '__main__':
             data.HP_use_count = args.use_count
             data.model_type = args.model_type
             data.use_bert = args.use_bert
+            data.warm_up = args.warm_up
         else:
             data = Data()
             data.HP_gpu = gpu
@@ -490,6 +509,7 @@ if __name__ == '__main__':
             data.HP_use_count = args.use_count
             data.model_type = args.model_type
             data.use_bert = args.use_bert
+            data.warm_up = args.warm_up
 
             data_initialization(data, train_file, dev_file, test_file)
             data.generate_instance(train_file, 'train')

@@ -14,7 +14,7 @@ NULLKEY = "-null-"
 
 class Data:
     def __init__(self):
-        self.MAX_SENTENCE_LENGTH = 2000
+        self.MAX_SENTENCE_LENGTH = 250
         self.MAX_WORD_LENGTH = -1
         self.number_normalized = True
         self.norm_word_emb = True
@@ -65,6 +65,7 @@ class Data:
         self.HP_clip = 5.0
         self.HP_momentum = 0
         self.HP_num_layer = 4
+        self.HP_warm_up = False
 
     def show_data_summary(self):
         print("DATA SUMMARY START:")
