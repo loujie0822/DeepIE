@@ -134,7 +134,7 @@ class Data:
         for idx in tqdm(range(len(in_lines))):
             line = in_lines[idx]
             if len(line) > 2:
-                pairs = line.strip().split('\t')
+                pairs = line.strip().split()
                 if len(pairs) == 1:
                     word = ' '
                     # print('word ==  ')
