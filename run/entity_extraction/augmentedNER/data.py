@@ -135,11 +135,11 @@ class Data:
             line = in_lines[idx]
             if len(line) > 2:
                 pairs = line.strip().split()
-                if len(pairs) == 1:
-                    word = ' '
-                    # print('word ==  ')
-                else:
-                    word = pairs[0]
+                # if len(pairs) == 1:
+                #     word = ' '
+                #     # print('word ==  ')
+                # else:
+                word = pairs[0]
                 if self.number_normalized:
                     word = normalize_word(word)
                 label = pairs[-1]
