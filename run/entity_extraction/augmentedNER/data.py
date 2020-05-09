@@ -84,7 +84,7 @@ class Data:
         print("     Norm     word   emb: %s" % (self.norm_word_emb))
         print("     Norm     biword emb: %s" % (self.norm_biword_emb))
         print("     Norm     gaz    emb: %s" % (self.norm_gaz_emb))
-        print("     bert file is : %s" % (self.bert_type))
+        print("     bert file is : %s" % (self.bertpath))
         print("     Train instance number: %s" % (len(self.train_texts)))
         print("     Dev   instance number: %s" % (len(self.dev_texts)))
         print("     Test  instance number: %s" % (len(self.test_texts)))
