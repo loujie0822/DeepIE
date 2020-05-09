@@ -137,7 +137,8 @@ class Data:
             if len(line) > 2:
                 pairs = line.strip().split()
                 if len(pairs) == 1:
-                    word = '[unused1]'
+                    # print(pairs[0])
+                    word = ' '
                 else:
                     word = pairs[0]
                 if self.number_normalized:
