@@ -12,6 +12,7 @@ PADDING = "</pad>"
 NULLKEY = "-null-"
 
 
+
 class Data:
     def __init__(self):
         self.MAX_SENTENCE_LENGTH = 400
@@ -135,22 +136,21 @@ class Data:
             line = in_lines[idx]
             if len(line) > 2:
                 pairs = line.strip().split()
-                # if len(pairs) == 1:
-                #     word = ' '
-                #     # print('word ==  ')
-                # else:
-                word = pairs[0]
+                if len(pairs) == 1:
+                    word = '[unused1]'
+                else:
+                    word = pairs[0]
                 if self.number_normalized:
                     word = normalize_word(word)
                 label = pairs[-1]
                 self.label_alphabet.add(label)
-                self.word_alphabet.add(word)
+                self.word_alphabet.add(word.lower())
                 if idx < len(in_lines) - 1 and len(in_lines[idx + 1]) > 2:
                     biword = word + in_lines[idx + 1].strip().split()[0]
                     biword = normalize_word(biword)
                 else:
                     biword = word + NULLKEY
-                self.biword_alphabet.add(biword)
+                self.biword_alphabet.add(biword.lower())
                 self.biword_count[biword] = self.biword_count.get(biword, 0) + 1
                 seqlen += 1
             else:

@@ -37,11 +37,11 @@ def read_instance(input_file, word_alphabet, biword_alphabet, label_alphabet, nu
         line = in_lines[idx]
         if len(line) > 2:
             pairs = line.strip().split('\t')
-            # if len(pairs) == 1:
-            #     word = ' '
-            #     # print('word ==  ')
-            # else:
-            word = pairs[0]
+            if len(pairs) == 1:
+                word = '[unused1]'
+                # print('word ==  ')
+            else:
+                word = pairs[0]
             if number_normalized:
                 word = normalize_word(word)
             label = pairs[-1]
@@ -54,8 +54,8 @@ def read_instance(input_file, word_alphabet, biword_alphabet, label_alphabet, nu
             biwords.append(biword)
             words.append(word)
             labels.append(label)
-            word_Ids.append(word_alphabet.get_index(word))
-            biword_index = biword_alphabet.get_index(biword)
+            word_Ids.append(word_alphabet.get_index(word.lower()))
+            biword_index = biword_alphabet.get_index(biword.lower())
             biword_Ids.append(biword_index)
             label_Ids.append(label_alphabet.get_index(label))
 
