@@ -57,7 +57,7 @@ class Data:
         self.HP_batch_size = 10
         self.HP_hidden_dim = 128
         self.HP_dropout = 0.5
-        self.HP_lstm_layer = 1
+        self.HP_lstm_layer = 2
         self.HP_bilstm = True
         self.HP_gpu = True
         self.HP_lr = 0.015
