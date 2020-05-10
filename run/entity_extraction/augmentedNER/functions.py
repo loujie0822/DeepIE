@@ -52,7 +52,7 @@ def read_instance(input_file, word_alphabet, biword_alphabet, label_alphabet, nu
             else:
                 biword = word + NULLKEY
             biwords.append(biword)
-            words.append(word)
+            words.append(word.lower())
             labels.append(label)
             word_Ids.append(word_alphabet.get_index(word.lower()))
             biword_index = biword_alphabet.get_index(biword.lower())
