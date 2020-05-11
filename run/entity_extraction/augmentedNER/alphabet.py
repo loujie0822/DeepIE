@@ -22,6 +22,7 @@ class Alphabet:
         # Index 0 is occupied by default, all else following.
         self.default_index = 0
         self.next_index = 1
+        # self.add(self.UNKNOWN)
         if not self.label:
             self.instances.append(self.UNKNOWN)
             self.instance2index[self.UNKNOWN] = self.next_index
