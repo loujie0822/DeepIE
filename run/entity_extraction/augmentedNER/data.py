@@ -14,14 +14,15 @@ NULLKEY = "-null-"
 
 class Data:
     def __init__(self):
-        self.MAX_SENTENCE_LENGTH = 250
+        self.MAX_SENTENCE_LENGTH = 400
         self.MAX_WORD_LENGTH = -1
         self.number_normalized = True
         self.norm_word_emb = True
         self.norm_biword_emb = True
         self.norm_gaz_emb = False
+        self.min_freq = 1
         self.word_alphabet = Alphabet('word')
-        self.biword_alphabet = Alphabet('biword')
+        self.biword_alphabet = Alphabet('biword', min_freq=self.min_freq)
         self.label_alphabet = Alphabet('label', True)
 
         self.biword_count = {}
@@ -51,6 +52,9 @@ class Data:
         self.word_alphabet_size = 0
         self.biword_alphabet_size = 0
         self.label_alphabet_size = 0
+
+        self.bertpath = 'transformer_cpt/bert/'
+        self.bert_finetune = False
 
         ### hyperparameters
         self.HP_iteration = 100
@@ -82,6 +86,7 @@ class Data:
         print("     Norm     word   emb: %s" % (self.norm_word_emb))
         print("     Norm     biword emb: %s" % (self.norm_biword_emb))
         print("     Norm     gaz    emb: %s" % (self.norm_gaz_emb))
+        print("     bert file is : %s" % (self.bertpath))
         print("     Train instance number: %s" % (len(self.train_texts)))
         print("     Dev   instance number: %s" % (len(self.dev_texts)))
         print("     Test  instance number: %s" % (len(self.test_texts)))
@@ -132,26 +137,27 @@ class Data:
             line = in_lines[idx]
             if len(line) > 2:
                 pairs = line.strip().split()
-                word = pairs[0]
+                if len(pairs) == 1:
+                    # print(pairs[0])
+                    word = ' '
+                else:
+                    word = pairs[0]
                 if self.number_normalized:
                     word = normalize_word(word)
                 label = pairs[-1]
                 self.label_alphabet.add(label)
-                self.word_alphabet.add(word)
+                self.word_alphabet.add(word.lower())
                 if idx < len(in_lines) - 1 and len(in_lines[idx + 1]) > 2:
                     biword = word + in_lines[idx + 1].strip().split()[0]
                     biword = normalize_word(biword)
                 else:
                     biword = word + NULLKEY
-                self.biword_alphabet.add(biword)
+                self.biword_alphabet.add(biword.lower())
                 self.biword_count[biword] = self.biword_count.get(biword, 0) + 1
                 seqlen += 1
             else:
                 seqlen = 0
 
-        self.word_alphabet_size = self.word_alphabet.size()
-        self.biword_alphabet_size = self.biword_alphabet.size()
-        self.label_alphabet_size = self.label_alphabet.size()
         startS = False
         startB = False
         for label, _ in self.label_alphabet.iteritems():
@@ -166,9 +172,13 @@ class Data:
                 self.tagScheme = "BIO"
 
     def fix_alphabet(self):
+
         self.word_alphabet.close()
         self.biword_alphabet.close()
         self.label_alphabet.close()
+        self.word_alphabet_size = self.word_alphabet.size()
+        self.biword_alphabet_size = self.biword_alphabet.size()
+        self.label_alphabet_size = self.label_alphabet.size()
 
     def build_word_pretrain_emb(self, emb_path):
         print("build word pretrain emb...")
@@ -212,18 +222,18 @@ class Data:
         if name == "train":
             self.train_texts, self.train_Ids = read_instance(input_file, self.word_alphabet, self.biword_alphabet,
                                                              self.label_alphabet, self.number_normalized,
-                                                             self.MAX_SENTENCE_LENGTH)
+                                                             self.MAX_SENTENCE_LENGTH, self.bertpath)
         elif name == "dev":
             self.dev_texts, self.dev_Ids = read_instance(input_file, self.word_alphabet, self.biword_alphabet,
                                                          self.label_alphabet, self.number_normalized,
-                                                         self.MAX_SENTENCE_LENGTH)
+                                                         self.MAX_SENTENCE_LENGTH, self.bertpath)
         elif name == "test":
             self.test_texts, self.test_Ids = read_instance(input_file, self.word_alphabet, self.biword_alphabet,
                                                            self.label_alphabet, self.number_normalized,
-                                                           self.MAX_SENTENCE_LENGTH)
+                                                           self.MAX_SENTENCE_LENGTH, self.bertpath)
         elif name == "raw":
             self.raw_texts, self.raw_Ids = read_instance(input_file, self.word_alphabet, self.biword_alphabet,
                                                          self.label_alphabet, self.number_normalized,
-                                                         self.MAX_SENTENCE_LENGTH)
+                                                         self.MAX_SENTENCE_LENGTH, self.bertpath)
         else:
             print("Error: you can only generate train/dev/test instance! Illegal input:%s" % (name))

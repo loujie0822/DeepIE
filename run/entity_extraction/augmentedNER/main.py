@@ -20,6 +20,7 @@ import torch.autograd as autograd
 import torch.optim as optim
 
 from models.ner_net.augment_ner import GazLSTM as SeqModel
+from models.ner_net.bert_ner import BertNER
 from run.entity_extraction.augmentedNER.data import Data
 from run.entity_extraction.augmentedNER.metric import get_ner_fmeasure
 
@@ -28,9 +29,9 @@ def data_initialization(data, train_file, dev_file, test_file):
     data.build_alphabet(train_file)
     data.build_alphabet(dev_file)
     # data.build_alphabet(test_file)
+    data.fix_alphabet()
     print(data.word_alphabet_size)
     print(data.biword_alphabet_size)
-    data.fix_alphabet()
     return data
 
 
@@ -231,7 +232,13 @@ def train(data, save_model_dir, seg=True, debug=False):
 
     # data.show_data_summary()
 
-    model = SeqModel(data)
+    if data.bert_finetune:
+        print('bert_finetune')
+        model = BertNER(data)
+    else:
+        print('bert feature extraction')
+        model = SeqModel(data)
+
     print("finish building model.")
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
@@ -248,7 +255,7 @@ def train(data, save_model_dir, seg=True, debug=False):
         num_train_optimization_steps = int(len(data.train_Ids) / data.HP_batch_size) * data.HP_iteration
         optimizer = BertAdam(optimizer_grouped_parameters,
                              lr=data.HP_lr,
-                             warmup=0.01,
+                             warmup=0.1,
                              t_total=num_train_optimization_steps)
 
     best_dev = -1
@@ -440,6 +447,9 @@ if __name__ == '__main__':
     parser.add_argument('--model_type', default='transformer')
     parser.add_argument('--drop', type=float, default=0.5)
 
+    parser.add_argument('--lstm_layer', default=2, type=int)
+
+    parser.add_argument('--bert_finetune', dest='bert_finetune', action='store_true', default=False)
     parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
@@ -493,6 +503,10 @@ if __name__ == '__main__':
             data.model_type = args.model_type
             data.use_bert = args.use_bert
             data.warm_up = args.warm_up
+            data.bert_finetune = args.bert_finetune
+
+            data.HP_lstm_layer = args.lstm_layer
+
         else:
             data = Data()
             data.HP_gpu = gpu
@@ -510,6 +524,8 @@ if __name__ == '__main__':
             data.model_type = args.model_type
             data.use_bert = args.use_bert
             data.warm_up = args.warm_up
+            data.bert_finetune = args.bert_finetune
+            data.HP_lstm_layer = args.lstm_layer
 
             data_initialization(data, train_file, dev_file, test_file)
             data.generate_instance(train_file, 'train')
