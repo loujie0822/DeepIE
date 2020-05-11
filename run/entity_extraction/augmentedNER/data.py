@@ -20,7 +20,7 @@ class Data:
         self.norm_word_emb = True
         self.norm_biword_emb = True
         self.norm_gaz_emb = False
-        self.min_freq = 2
+        self.min_freq = 1
         self.word_alphabet = Alphabet('word')
         self.biword_alphabet = Alphabet('biword', min_freq=self.min_freq)
         self.label_alphabet = Alphabet('label', True)
@@ -53,7 +53,7 @@ class Data:
         self.biword_alphabet_size = 0
         self.label_alphabet_size = 0
 
-        self.bertpath = 'transformer_cpt/chinese_roberta_wwm_large_ext_pytorch/'
+        self.bertpath = 'transformer_cpt/bert/'
         self.bert_finetune = False
 
         ### hyperparameters

@@ -447,6 +447,8 @@ if __name__ == '__main__':
     parser.add_argument('--model_type', default='transformer')
     parser.add_argument('--drop', type=float, default=0.5)
 
+    parser.add_argument('--lstm_layer', default=2, type=int)
+
     parser.add_argument('--bert_finetune', dest='bert_finetune', action='store_true', default=True)
     parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
@@ -503,6 +505,8 @@ if __name__ == '__main__':
             data.warm_up = args.warm_up
             data.bert_finetune = args.bert_finetune
 
+            data.HP_lstm_layer = args.lstm_layer
+
         else:
             data = Data()
             data.HP_gpu = gpu
@@ -521,6 +525,7 @@ if __name__ == '__main__':
             data.use_bert = args.use_bert
             data.warm_up = args.warm_up
             data.bert_finetune = args.bert_finetune
+            data.HP_lstm_layer = args.lstm_layer
 
             data_initialization(data, train_file, dev_file, test_file)
             data.generate_instance(train_file, 'train')
