@@ -255,7 +255,7 @@ def train(data, save_model_dir, seg=True, debug=False):
         num_train_optimization_steps = int(len(data.train_Ids) / data.HP_batch_size) * data.HP_iteration
         optimizer = BertAdam(optimizer_grouped_parameters,
                              lr=data.HP_lr,
-                             warmup=0.01,
+                             warmup=0.1,
                              t_total=num_train_optimization_steps)
 
     best_dev = -1

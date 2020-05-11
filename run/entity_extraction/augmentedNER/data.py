@@ -54,6 +54,7 @@ class Data:
         self.label_alphabet_size = 0
 
         self.bertpath = 'transformer_cpt/bert/'
+        self.bert_finetune =False
 
         ### hyperparameters
         self.HP_iteration = 100
