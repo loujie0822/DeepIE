@@ -53,7 +53,7 @@ class Data:
         self.biword_alphabet_size = 0
         self.label_alphabet_size = 0
 
-        self.bertpath = 'transformer_cpt/bert/'
+        self.bertpath = 'transformer_cpt/chinese_roberta_wwm_large_ext_pytorch/'
         self.bert_finetune = False
 
         ### hyperparameters
