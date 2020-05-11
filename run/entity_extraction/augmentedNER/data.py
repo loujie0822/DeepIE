@@ -12,7 +12,6 @@ PADDING = "</pad>"
 NULLKEY = "-null-"
 
 
-
 class Data:
     def __init__(self):
         self.MAX_SENTENCE_LENGTH = 400
@@ -21,8 +20,9 @@ class Data:
         self.norm_word_emb = True
         self.norm_biword_emb = True
         self.norm_gaz_emb = False
+        self.min_freq = 2
         self.word_alphabet = Alphabet('word')
-        self.biword_alphabet = Alphabet('biword')
+        self.biword_alphabet = Alphabet('biword', min_freq=self.min_freq)
         self.label_alphabet = Alphabet('label', True)
 
         self.biword_count = {}
@@ -54,7 +54,7 @@ class Data:
         self.label_alphabet_size = 0
 
         self.bertpath = 'transformer_cpt/bert/'
-        self.bert_finetune =False
+        self.bert_finetune = False
 
         ### hyperparameters
         self.HP_iteration = 100
@@ -158,9 +158,6 @@ class Data:
             else:
                 seqlen = 0
 
-        self.word_alphabet_size = self.word_alphabet.size()
-        self.biword_alphabet_size = self.biword_alphabet.size()
-        self.label_alphabet_size = self.label_alphabet.size()
         startS = False
         startB = False
         for label, _ in self.label_alphabet.iteritems():
@@ -175,9 +172,13 @@ class Data:
                 self.tagScheme = "BIO"
 
     def fix_alphabet(self):
+
         self.word_alphabet.close()
         self.biword_alphabet.close()
         self.label_alphabet.close()
+        self.word_alphabet_size = self.word_alphabet.size()
+        self.biword_alphabet_size = self.biword_alphabet.size()
+        self.label_alphabet_size = self.label_alphabet.size()
 
     def build_word_pretrain_emb(self, emb_path):
         print("build word pretrain emb...")
