@@ -449,7 +449,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--lstm_layer', default=2, type=int)
 
-    parser.add_argument('--bert_finetune', dest='bert_finetune', action='store_true', default=True)
+    parser.add_argument('--bert_finetune', dest='bert_finetune', action='store_true', default=False)
     parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
