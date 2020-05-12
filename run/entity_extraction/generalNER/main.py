@@ -20,7 +20,7 @@ import torch.autograd as autograd
 import torch.optim as optim
 
 from models.ner_net.augment_ner import GazLSTM as SeqModel
-from models.ner_net.bert_ner import BertNER
+from models.ner_net.transformers_ner import BertNER
 from run.entity_extraction.augmentedNER.data import Data
 from run.entity_extraction.augmentedNER.metric import get_ner_fmeasure
 
