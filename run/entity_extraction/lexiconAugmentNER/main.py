@@ -23,7 +23,7 @@ from run.entity_extraction.lexiconAugmentNER.utils.metric import get_ner_fmeasur
 def data_initialization(data, gaz_file, train_file, dev_file, test_file):
     data.build_alphabet(train_file)
     data.build_alphabet(dev_file)
-    data.build_alphabet(test_file)
+    # data.build_alphabet(test_file)
     data.build_gaz_file(gaz_file)
     data.build_gaz_alphabet(train_file, count=True)
     data.build_gaz_alphabet(dev_file, count=True)
