@@ -1,16 +1,17 @@
 import argparse
 
-from fastNLP import SpanFPreRecMetric, BucketSampler
+from fastNLP.embeddings import StaticEmbedding
+
+from fastNLP import BucketSampler, SpanFPreRecMetric
 from fastNLP import Trainer, GradientClipCallback, WarmupCallback
 from fastNLP import cache_results
-from fastNLP.embeddings import StaticEmbedding
 from torch import optim
 
 from models.ner_net.tener import TENER
 from run.entity_extraction.tener.modules.callbacks import EvaluateCallback
 from run.entity_extraction.tener.modules.pipe import CNNERPipe
 
-device = 'cpu'
+device = 0
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', type=str, default='medical', choices=['weibo', 'resume', 'ontonotes', 'msra'])
@@ -41,6 +42,13 @@ elif dataset == 'ontonotes':
     attn_type = 'adatrans'
     n_epochs = 100
 elif dataset == 'msra':
+    n_heads = 6
+    head_dims = 80
+    num_layers = 2
+    lr = 0.0007
+    attn_type = 'adatrans'
+    n_epochs = 100
+elif dataset == 'medical':
     n_heads = 6
     head_dims = 80
     num_layers = 2
@@ -100,13 +108,18 @@ def load_data():
                  'dev': 'data/mediacal_data/dev.txt',
                  'test': 'data/mediacal_data/dev.txt'}
         min_freq = 2
+    elif dataset == 'test':
+        paths = {'train': 'data/test_data/dev.txt',
+                 'dev': 'data/test_data/dev.txt',
+                 'test': 'data/test_data/dev.txt'}
+        min_freq = 2
     data_bundle = CNNERPipe(bigrams=True, encoding_type=encoding_type).process_from_file(paths)
     embed = StaticEmbedding(data_bundle.get_vocab('chars'),
-                            model_dir_or_name='data/gigaword_chn.all.a2b.uni.ite50.vec',
+                            model_dir_or_name='cpt/gigaword/uni.ite50.vec',
                             min_freq=1, only_norm_found_vector=normalize_embed, word_dropout=0.01, dropout=0.3)
 
     bi_embed = StaticEmbedding(data_bundle.get_vocab('bigrams'),
-                               model_dir_or_name='data/gigaword_chn.all.a2b.bi.ite50.vec',
+                               model_dir_or_name='cpt/gigaword/bi.ite50.vec',
                                word_dropout=0.02, dropout=0.3, min_freq=min_freq,
                                only_norm_found_vector=normalize_embed, only_train_min_freq=True)
 
