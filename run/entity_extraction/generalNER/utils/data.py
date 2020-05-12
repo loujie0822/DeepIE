@@ -3,8 +3,8 @@ import sys
 
 from tqdm import tqdm
 
-from run.entity_extraction.generalNER.alphabet import Alphabet
-from run.entity_extraction.generalNER.functions import *
+from run.entity_extraction.generalNER.utils.alphabet import Alphabet
+from run.entity_extraction.generalNER.utils.functions import *
 
 START = "</s>"
 UNKNOWN = "</unk>"

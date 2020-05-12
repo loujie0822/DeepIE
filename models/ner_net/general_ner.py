@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 from transformers.modeling_bert import BertModel
 
-from layers.ner_layers.crf import CRF
-from layers.ner_layers.layers import NERmodel
+from layers.decoders.crf import CRF
+from layers.encoders.ner_layers import NERmodel
 
 
 class GazLSTM(nn.Module):

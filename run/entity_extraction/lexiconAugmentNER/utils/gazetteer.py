@@ -1,5 +1,4 @@
-from run.entity_extraction.generalNER.utils.trie import Trie
-
+from run.entity_extraction.lexiconAugmentNER.utils.trie import Trie
 
 class Gazetteer:
     def __init__(self, lower):

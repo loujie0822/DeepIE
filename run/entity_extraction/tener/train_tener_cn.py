@@ -1,17 +1,16 @@
 import argparse
 
-from fastNLP.embeddings import StaticEmbedding
+from torch import optim
 
 from fastNLP import BucketSampler, SpanFPreRecMetric
 from fastNLP import Trainer, GradientClipCallback, WarmupCallback
 from fastNLP import cache_results
-from torch import optim
-
+from fastNLP.embeddings import StaticEmbedding, BertEmbedding
 from models.ner_net.tener import TENER
 from run.entity_extraction.tener.modules.callbacks import EvaluateCallback
 from run.entity_extraction.tener.modules.pipe import CNNERPipe
 
-device = 0
+device = 'cpu'
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', type=str, default='medical', choices=['weibo', 'resume', 'ontonotes', 'msra'])
@@ -65,7 +64,7 @@ elif dataset == 'test':
 
 pos_embed = None
 
-batch_size = 16
+batch_size = 32
 warmup_steps = 0.01
 after_norm = 1
 model_type = 'transformer'
@@ -127,12 +126,16 @@ def load_data():
 
 
 data_bundle, embed, bi_embed = load_data()
+
+bert_embed = BertEmbedding(data_bundle.get_vocab('chars'), model_dir_or_name='transformer_cpt/bert',
+                           requires_grad=False)
+
 print(data_bundle)
 model = TENER(tag_vocab=data_bundle.get_vocab('target'), embed=embed, num_layers=num_layers,
               d_model=d_model, n_head=n_heads,
               feedforward_dim=dim_feedforward, dropout=dropout,
               after_norm=after_norm, attn_type=attn_type,
-              bi_embed=bi_embed,
+              bi_embed=bi_embed, bert_embed=bert_embed,
               fc_dropout=fc_dropout,
               pos_embed=pos_embed,
               scale=attn_type == 'transformer')

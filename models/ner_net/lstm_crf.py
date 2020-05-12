@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from layers.decoders.crf import CRF
+from layers.decoders.pytorch_crf import CRF
 from layers.encoders.rnns.stacked_rnn import StackedBRNN
 
 warnings.filterwarnings("ignore")
