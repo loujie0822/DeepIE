@@ -1,4 +1,4 @@
-from run.entity_extraction.augmentedNER.trie import Trie
+from run.entity_extraction.generalNER.utils.trie import Trie
 
 
 class Gazetteer:

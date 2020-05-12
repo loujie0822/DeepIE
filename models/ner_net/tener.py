@@ -8,7 +8,7 @@ from layers.encoders.transformers.transformer import TransformerEncoder
 
 class TENER(nn.Module):
     def __init__(self, tag_vocab, embed, num_layers, d_model, n_head, feedforward_dim, dropout,
-                 after_norm=True, attn_type='adatrans', bi_embed=None,
+                 after_norm=True, attn_type='adatrans', bi_embed=None,bert_embed=None,
                  fc_dropout=0.3, pos_embed=None, scale=False, dropout_attn=None):
         """
 
@@ -33,6 +33,11 @@ class TENER(nn.Module):
         if bi_embed is not None:
             self.bi_embed = bi_embed
             embed_size += self.bi_embed.embed_size
+        if bert_embed is not None:
+            self.bert_embed = bert_embed
+            embed_size += self.bert_embed.embed_size
+
+        print('total embed_size is {}'.format(embed_size))
 
         self.in_fc = nn.Linear(embed_size, d_model)
 
@@ -46,12 +51,15 @@ class TENER(nn.Module):
         trans = allowed_transitions(tag_vocab, include_start_end=True)
         self.crf = ConditionalRandomField(len(tag_vocab), include_start_end_trans=True, allowed_transitions=trans)
 
-    def _forward(self, chars, target, bigrams=None):
-        mask = chars.ne(0)
-        chars = self.embed(chars)
+    def _forward(self, input_chars, target, bigrams=None):
+        mask = input_chars.ne(0)
+        chars = self.embed(input_chars)
         if self.bi_embed is not None:
             bigrams = self.bi_embed(bigrams)
             chars = torch.cat([chars, bigrams], dim=-1)
+        if self.bert_embed is not None:
+            bert_embeddings= self.bert_embed(input_chars)
+            chars = torch.cat([chars, bert_embeddings], dim=-1)
 
         chars = self.in_fc(chars)
         chars = self.transformer(chars, mask)

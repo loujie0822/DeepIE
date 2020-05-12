@@ -19,10 +19,10 @@ import torch
 import torch.autograd as autograd
 import torch.optim as optim
 
-from models.ner_net.augment_ner import GazLSTM as SeqModel
-from models.ner_net.bert_ner import BertNER
-from run.entity_extraction.augmentedNER.data import Data
-from run.entity_extraction.augmentedNER.metric import get_ner_fmeasure
+from models.ner_net.general_ner import GazLSTM as SeqModel
+from models.ner_net.bert_finetune_ner import BertNER
+from run.entity_extraction.generalNER.utils.data import Data
+from run.entity_extraction.generalNER.utils.metric import get_ner_fmeasure
 
 
 def data_initialization(data, train_file, dev_file, test_file):

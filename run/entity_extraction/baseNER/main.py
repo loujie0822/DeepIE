@@ -4,8 +4,8 @@ import logging
 import os
 import pickle
 
-from run.entity_extraction.lstm_crf.data_loader import Reader, Vocabulary, Feature, StaticEmbedding
-from run.entity_extraction.lstm_crf.train import Trainer
+from run.entity_extraction.baseNER.data_loader import Reader, Vocabulary, Feature, StaticEmbedding
+from run.entity_extraction.baseNER.train import Trainer
 from utils.file_util import load
 
 logger = logging.getLogger()
