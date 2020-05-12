@@ -7,6 +7,8 @@ from fastNLP import Trainer, GradientClipCallback, WarmupCallback
 from fastNLP import cache_results
 from fastNLP.embeddings import StaticEmbedding, BertEmbedding
 from models.ner_net.tener import TENER
+from models.ner_net.bert_tener import BERT_TENER
+
 from run.entity_extraction.adaptiveTransformerNER.modules.callbacks import EvaluateCallback
 from run.entity_extraction.adaptiveTransformerNER.modules.pipe import CNNERPipe
 
@@ -135,10 +137,18 @@ model = TENER(tag_vocab=data_bundle.get_vocab('target'), embed=embed, num_layers
               d_model=d_model, n_head=n_heads,
               feedforward_dim=dim_feedforward, dropout=dropout,
               after_norm=after_norm, attn_type=attn_type,
-              bi_embed=bi_embed, bert_embed=bert_embed,
+              bi_embed=bi_embed,bert_embed=bert_embed,
               fc_dropout=fc_dropout,
               pos_embed=pos_embed,
               scale=attn_type == 'transformer')
+# model = BERT_TENER(tag_vocab=data_bundle.get_vocab('target'), embed=embed, num_layers=num_layers,
+#               d_model=d_model, n_head=n_heads,
+#               feedforward_dim=dim_feedforward, dropout=dropout,
+#               after_norm=after_norm, attn_type=attn_type,
+#               bi_embed=bi_embed, bert_embed=bert_embed,
+#               fc_dropout=fc_dropout,
+#               pos_embed=pos_embed,
+#               scale=attn_type == 'transformer')
 
 optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9)
 
