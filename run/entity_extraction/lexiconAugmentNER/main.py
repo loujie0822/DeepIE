@@ -27,7 +27,7 @@ def data_initialization(data, gaz_file, train_file, dev_file, test_file):
     data.build_gaz_file(gaz_file)
     data.build_gaz_alphabet(train_file, count=True)
     data.build_gaz_alphabet(dev_file, count=True)
-    data.build_gaz_alphabet(test_file, count=True)
+    # data.build_gaz_alphabet(test_file, count=True)
     data.fix_alphabet()
     return data
 
@@ -530,7 +530,7 @@ if __name__ == '__main__':
             data_initialization(data, gaz_file, train_file, dev_file, test_file)
             data.generate_instance_with_gaz(train_file, 'train')
             data.generate_instance_with_gaz(dev_file, 'dev')
-            data.generate_instance_with_gaz(test_file, 'test')
+            # data.generate_instance_with_gaz(test_file, 'test')
             data.build_word_pretrain_emb(char_emb)
             data.build_biword_pretrain_emb(bichar_emb)
             data.build_gaz_pretrain_emb(gaz_file)
