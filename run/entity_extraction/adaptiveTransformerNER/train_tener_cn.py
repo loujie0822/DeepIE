@@ -7,8 +7,8 @@ from fastNLP import Trainer, GradientClipCallback, WarmupCallback
 from fastNLP import cache_results
 from fastNLP.embeddings import StaticEmbedding, BertEmbedding
 from models.ner_net.tener import TENER
-from run.entity_extraction.tener.modules.callbacks import EvaluateCallback
-from run.entity_extraction.tener.modules.pipe import CNNERPipe
+from run.entity_extraction.adaptiveTransformerNER.modules.callbacks import EvaluateCallback
+from run.entity_extraction.adaptiveTransformerNER.modules.pipe import CNNERPipe
 
 device = 'cpu'
 parser = argparse.ArgumentParser()
