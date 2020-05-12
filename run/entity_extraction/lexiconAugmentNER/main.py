@@ -540,6 +540,7 @@ if __name__ == '__main__':
                 pickle.dump(data, f)
             set_seed(seed_num)
         print('data.use_biword=', data.use_bigram)
+        data.show_data_summary()
         train(data, save_model_dir, seg)
     elif status == 'test':
         print('Loading processed data')

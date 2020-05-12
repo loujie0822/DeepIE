@@ -82,7 +82,7 @@ class GazLSTM(nn.Module):
         self.crf = CRF(data.label_alphabet_size, self.gpu)
 
         if self.use_bert:
-            self.bert_encoder = BertModel.from_pretrained('bert-base-chinese')
+            self.bert_encoder = BertModel.from_pretrained('transformer_cpt/bert/')
             for p in self.bert_encoder.parameters():
                 p.requires_grad = False
 
