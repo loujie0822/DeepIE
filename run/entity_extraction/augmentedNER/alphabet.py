@@ -22,10 +22,7 @@ class Alphabet:
         # Index 0 is occupied by default, all else following.
         self.default_index = 0
         self.next_index = 1
-        if not self.label:
-            self.instances.append(self.UNKNOWN)
-            self.instance2index[self.UNKNOWN] = self.next_index
-            self.next_index +=1
+        self.add(self.UNKNOWN)
 
     def clear(self, keep_growing=True):
         self.instance2index = {}
@@ -37,11 +34,10 @@ class Alphabet:
         self.next_index = 1
 
     def add(self, instance):
-        self.instance_counter[instance] += 1
-        # if instance not in self.instance2index:
-        #     self.instances.append(instance)
-        #     self.instance2index[instance] = self.next_index
-        #     self.next_index += 1
+        if instance not in self.instance2index:
+            self.instances.append(instance)
+            self.instance2index[instance] = self.next_index
+            self.next_index += 1
 
     def get_index(self, instance):
         try:
@@ -79,11 +75,6 @@ class Alphabet:
         return zip(range(start, len(self.instances) + 1), self.instances[start - 1:])
 
     def close(self):
-        for instance, count in self.instance_counter.items():
-            if count >= self.min_freq and instance not in self.instance2index:
-                self.instances.append(instance)
-                self.instance2index[instance] = self.next_index
-                self.next_index += 1
         self.keep_growing = False
 
     def open(self):

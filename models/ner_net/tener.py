@@ -7,7 +7,9 @@ from layers.encoders.transformers.transformer import TransformerEncoder
 
 
 class TENER(nn.Module):
-    def __init__(self, model_conf, attn_type='adatrans', pos_embed=None, dropout_attn=None):
+    def __init__(self, tag_vocab, embed, num_layers, d_model, n_head, feedforward_dim, dropout,
+                 after_norm=True, attn_type='adatrans', bi_embed=None,
+                 fc_dropout=0.3, pos_embed=None, scale=False, dropout_attn=None):
         """
 
         :param tag_vocab: fastNLP Vocabulary
@@ -25,33 +27,12 @@ class TENER(nn.Module):
         """
         super().__init__()
 
-        print('current model is TENER')
-
-        # origin paper param
-
-        n_head = 6
-        head_dims = 80
-        num_layers = 2
-        d_model = n_head * head_dims
-        feedforward_dim = int(2 * d_model)
-        dropout = 0.15
-        fc_dropout = 0.4
-        after_norm = 1
-        scale = attn_type == 'transformer'
-        tag_vocab = model_conf['entity_type']
-
-        # embedding
-        embed = model_conf['char_emb']
-        bi_embed = model_conf['bichar_emb']
-
-        self.embed = nn.Embedding(num_embeddings=embed.shape[0], embedding_dim=embed.shape[1],
-                                         padding_idx=0, _weight=embed)
-        embed_size = embed.size()[1]
+        self.embed = embed
+        embed_size = self.embed.embed_size
         self.bi_embed = None
         if bi_embed is not None:
-            self.bi_embed = nn.Embedding(num_embeddings=bi_embed.shape[0], embedding_dim=bi_embed.shape[1],
-                                           padding_idx=0, _weight=bi_embed)
-            embed_size += bi_embed.size()[1]
+            self.bi_embed = bi_embed
+            embed_size += self.bi_embed.embed_size
 
         self.in_fc = nn.Linear(embed_size, d_model)
 
@@ -61,15 +42,11 @@ class TENER(nn.Module):
                                               pos_embed=pos_embed)
         self.fc_dropout = nn.Dropout(fc_dropout)
         self.out_fc = nn.Linear(d_model, len(tag_vocab))
-        trans = allowed_transitions({item: key for key, item in tag_vocab.items()}, include_start_end=True,
-                                    encoding_type='bmeso')
+
+        trans = allowed_transitions(tag_vocab, include_start_end=True)
         self.crf = ConditionalRandomField(len(tag_vocab), include_start_end_trans=True, allowed_transitions=trans)
 
-    def forward(self, char_id, bichar_id, label_ids, is_eval=False):
-        chars = char_id
-        bigrams = bichar_id
-        target = label_ids
-
+    def _forward(self, chars, target, bigrams=None):
         mask = chars.ne(0)
         chars = self.embed(chars)
         if self.bi_embed is not None:
@@ -81,9 +58,15 @@ class TENER(nn.Module):
         chars = self.fc_dropout(chars)
         chars = self.out_fc(chars)
         logits = F.log_softmax(chars, dim=-1)
-        if is_eval:
+        if target is None:
             paths, _ = self.crf.viterbi_decode(logits, mask)
-            return paths
+            return {'pred': paths}
         else:
             loss = self.crf(logits, target, mask)
-            return loss.mean()
+            return {'loss': loss}
+
+    def forward(self, chars, target, bigrams=None):
+        return self._forward(chars, target, bigrams)
+
+    def predict(self, chars, bigrams=None):
+        return self._forward(chars, target=None, bigrams=bigrams)

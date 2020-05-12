@@ -9,6 +9,7 @@ agumentNER/
 instance/
 data/
 cpt/
+fastNLP/
 shell/
 pyscripts/
 .pytest_cache/
