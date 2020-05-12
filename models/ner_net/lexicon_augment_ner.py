@@ -62,6 +62,8 @@ class GazLSTM(nn.Module):
         if self.use_bert:
             char_feature_dim = char_feature_dim + 768
 
+        print('total char_feature_dim {}'.format(char_feature_dim))
+
         ## lstm model
         if self.model_type == 'lstm':
             lstm_hidden = self.hidden_dim
