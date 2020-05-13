@@ -12,7 +12,7 @@ from models.ner_net.bert_tener import BERT_TENER
 from run.entity_extraction.adaptiveTransformerNER.modules.callbacks import EvaluateCallback
 from run.entity_extraction.adaptiveTransformerNER.modules.pipe import CNNERPipe
 
-device = 'cpu'
+device = 0
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--dataset', type=str, default='medical', choices=['weibo', 'resume', 'ontonotes', 'msra'])

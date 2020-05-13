@@ -457,7 +457,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_type', default='lstm')
     parser.add_argument('--drop', type=float, default=0.5)
 
-    parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=False)
+    parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=True)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)

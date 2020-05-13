@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument('--soft_word', type=bool, default=True)
     parser.add_argument('--warm_up', type=bool, default=False)
     parser.add_argument('--debug', type=bool, default=False)
-    parser.add_argument('--encoder', type=str, default='lstm', choices=['lstm', 'tener'])
+    parser.add_argument('--encoder', type=str, default='lstm', choices=['lstm'])
 
     # train parameters
     parser.add_argument('--train_mode', type=str, default="train")

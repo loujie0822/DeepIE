@@ -447,7 +447,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_type', default='transformer')
     parser.add_argument('--drop', type=float, default=0.5)
 
-    parser.add_argument('--lstm_layer', default=2, type=int)
+    parser.add_argument('--lstm_layer', default=1, type=int)
 
     parser.add_argument('--bert_finetune', dest='bert_finetune', action='store_true', default=False)
     parser.add_argument('--use_biword', dest='use_biword', action='store_true', default=False)
