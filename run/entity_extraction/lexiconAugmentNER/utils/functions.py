@@ -19,7 +19,7 @@ def normalize_word(word):
 def read_instance_with_gaz(num_layer, input_file, gaz, word_alphabet, biword_alphabet, biword_count, char_alphabet,
                            gaz_alphabet, gaz_count, gaz_split, label_alphabet, number_normalized, max_sent_length,
                            char_padding_size=-1, char_padding_symbol='</pad>'):
-    tokenizer = BertTokenizer.from_pretrained('bert-base-chinese', do_lower_case=True)
+    tokenizer = BertTokenizer.from_pretrained('transformer_cpt/bert/', do_lower_case=True)
 
     in_lines = open(input_file, 'r', encoding="utf-8").readlines()
     instence_texts = []

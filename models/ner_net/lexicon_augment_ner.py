@@ -62,6 +62,8 @@ class GazLSTM(nn.Module):
         if self.use_bert:
             char_feature_dim = char_feature_dim + 768
 
+        print('total char_feature_dim {}'.format(char_feature_dim))
+
         ## lstm model
         if self.model_type == 'lstm':
             lstm_hidden = self.hidden_dim
@@ -82,7 +84,7 @@ class GazLSTM(nn.Module):
         self.crf = CRF(data.label_alphabet_size, self.gpu)
 
         if self.use_bert:
-            self.bert_encoder = BertModel.from_pretrained('bert-base-chinese')
+            self.bert_encoder = BertModel.from_pretrained('transformer_cpt/bert/')
             for p in self.bert_encoder.parameters():
                 p.requires_grad = False
 
