@@ -1,8 +1,6 @@
-DeepIE: Deep Learning  for Information Extraction 
+# DeepIE: Deep Learning  for Information Extraction 
 
-**DeepIE**： 基于深度学习的信息抽取技术
-
-（预计2020年8月31日前全部更新完毕）
+**DeepIE**： 基于深度学习的信息抽取技术（预计2020年8月31日前全部更新完毕）
 
 
 
@@ -56,6 +54,8 @@ $ cd DeepIE
 | char-bigram-BERT + lexion-augment + lstm-crf | **92.78%** | 92.36%     | **93.20%** |
 
 - **CCKS2020-面向试验鉴定的命名实体识别任务**：TODO
+
+
 
 #### 2. 属性抽取
 
