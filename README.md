@@ -29,8 +29,8 @@ $ cd DeepIE
 | char-bigram + lstm-crf                       | 91.80%     | 92.60%     | 90.34%     |
 | char-bigram + adTransformer-crf              | 92.98%     | 93.25%     | 92.72%     |
 | char-bigram + lexion-augment + lstm-crf      | 93.33%     | 94.26%     | 92.43%     |
-| char-bigram-BERT + lstm-crf                  | **94.71%** | **95.14%** | **94.27%** |
-| char-bigram-BERT + lexion-augment + lstm-crf | TODO       | TODO       | TODO       |
+| char-bigram-BERT + lstm-crf                  | 94.71%     | 95.14%     | 94.27%     |
+| char-bigram-BERT + lexion-augment + lstm-crf | **95.26%** | **95.90%** | **94.63%** |
 
 - **CCKS2019-医疗实体抽取**
 
@@ -45,11 +45,17 @@ $ cd DeepIE
 | char-bigram-BERT + lstm-crf                  | 83.37%     | 83.51%     | 83.22%     |
 | char-bigram-BERT + lexion-augment + lstm-crf | **84.15%** | **84.29%** | **84.01%** |
 
-- **CCKS2020-医疗实体及事件抽取**：TODO
+- **CCKS2020-医疗实体抽取**：
+
+(注：测试集与ccks2019一致)
+
+| 方法                                         | f      | p      | r      |
+| -------------------------------------------- | ------ | ------ | ------ |
+| char-bigram + lstm-crf                       | 87.52% | 87.19% | 87.85% |
+| char-bigram-BERT + lstm-crf                  | 92.62% | 92.46% | 92.79% |
+| char-bigram-BERT + lexion-augment + lstm-crf | 92.78% | 92.36% | 93.20% |
 
 - **CCKS2020-面向试验鉴定的命名实体识别任务**：TODO
-
-
 
 #### 2. 属性抽取
 
