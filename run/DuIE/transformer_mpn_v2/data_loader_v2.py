@@ -18,6 +18,7 @@ chineseandpunctuationextractor = extract_chinese_and_punct.ChineseAndPunctuation
 class Example(object):
     def __init__(self,
                  p_id=None,
+                 raw_text=None,
                  context=None,
                  tok_to_orig_start_index=None,
                  tok_to_orig_end_index=None,
@@ -27,6 +28,7 @@ class Example(object):
                  gold_answer=None, ):
         self.p_id = p_id
         self.context = context
+        self.raw_text = raw_text
         self.tok_to_orig_start_index = tok_to_orig_start_index
         self.tok_to_orig_end_index = tok_to_orig_end_index
         self.bert_tokens = bert_tokens
@@ -188,69 +190,87 @@ class Reader(object):
                                                                                           return_orig_index=True)
                 tokens = ["[CLS]"] + tokens + ["[SEP]"]
                 sub_po_dict, sub_ent_list, spo_list = dict(), list(), list()
-                spoes = {}
-                for spo in src_data['spo_list']:
+                if 'spo_list' not in src_data:
+                    examples.append(
+                        Example(
+                            p_id=p_id,
+                            raw_text=src_data['text'],
+                            context=text_raw,
+                            tok_to_orig_start_index=tok_to_orig_start_index,
+                            tok_to_orig_end_index=tok_to_orig_end_index,
+                            bert_tokens=tokens,
+                            sub_entity_list=None,
+                            gold_answer=None,
+                            spoes=None
+                        ))
+                else:
 
-                    spo_dict = dict()
-                    for spo_object in spo['object'].keys():
-                        if spo['predicate'] in self.spo_conf:
-                            label = spo['predicate']
-                        else:
-                            label = spo['predicate'] + '_' + spo_object
-                        spo_dict[self.spo_conf[label]] = spo['object'][spo_object]
+                    spoes = {}
+                    for spo in src_data['spo_list']:
 
-                    for spo_object in spo['object'].keys():
-                        # assign relation label
-                        if spo['predicate'] in self.spo_conf:
-                            # simple relation
-                            predicate_label = self.spo_conf[spo['predicate']]
-
-                            subject_sub_tokens = covert_to_tokens(spo['subject'], self.tokenizer, self.max_seq_length)
-                            object_sub_tokens = covert_to_tokens(spo['object']['@value'], self.tokenizer,
-                                                                 self.max_seq_length)
-                            sub_ent_list.append(spo['subject'])
-                        else:
-                            # complex relation
-                            complex_relation_label = [6, 8, 24, 30, 44]
-                            complex_relation_affi_label = [7, 9, 25, 26, 27, 31, 45]
-                            predicate_label = self.spo_conf[spo['predicate'] + '_' + spo_object]
-
-                            if predicate_label in complex_relation_affi_label:
-                                subject_sub_tokens = covert_to_tokens(spo['object']['@value'], self.tokenizer,
-                                                                      self.max_seq_length)
-                                sub_ent_list.append(spo['object']['@value'])
+                        spo_dict = dict()
+                        for spo_object in spo['object'].keys():
+                            if spo['predicate'] in self.spo_conf:
+                                label = spo['predicate']
                             else:
+                                label = spo['predicate'] + '_' + spo_object
+                            spo_dict[self.spo_conf[label]] = spo['object'][spo_object]
+
+                        for spo_object in spo['object'].keys():
+                            # assign relation label
+                            if spo['predicate'] in self.spo_conf:
+                                # simple relation
+                                predicate_label = self.spo_conf[spo['predicate']]
+
                                 subject_sub_tokens = covert_to_tokens(spo['subject'], self.tokenizer,
                                                                       self.max_seq_length)
+                                object_sub_tokens = covert_to_tokens(spo['object']['@value'], self.tokenizer,
+                                                                     self.max_seq_length)
                                 sub_ent_list.append(spo['subject'])
-                            object_sub_tokens = covert_to_tokens(spo['object'][spo_object], self.tokenizer,
-                                                                 self.max_seq_length)
+                            else:
+                                # complex relation
+                                complex_relation_label = [6, 8, 24, 30, 44]
+                                complex_relation_affi_label = [7, 9, 25, 26, 27, 31, 45]
+                                predicate_label = self.spo_conf[spo['predicate'] + '_' + spo_object]
 
-                        subject_start, object_start = search_spo_index(tokens, subject_sub_tokens, object_sub_tokens)
-                        if subject_start == -1:
-                            subject_start = search(subject_sub_tokens, tokens)
-                        if object_start == -1:
-                            object_start = search(object_sub_tokens, tokens)
+                                if predicate_label in complex_relation_affi_label:
+                                    subject_sub_tokens = covert_to_tokens(spo['object']['@value'], self.tokenizer,
+                                                                          self.max_seq_length)
+                                    sub_ent_list.append(spo['object']['@value'])
+                                else:
+                                    subject_sub_tokens = covert_to_tokens(spo['subject'], self.tokenizer,
+                                                                          self.max_seq_length)
+                                    sub_ent_list.append(spo['subject'])
+                                object_sub_tokens = covert_to_tokens(spo['object'][spo_object], self.tokenizer,
+                                                                     self.max_seq_length)
 
-                        if subject_start != -1 and object_start != -1:
-                            s = (subject_start, subject_start + len(subject_sub_tokens) - 1)
-                            o = (object_start, object_start + len(object_sub_tokens) - 1, predicate_label)
-                            if s not in spoes:
-                                spoes[s] = []
-                            spoes[s].append(o)
+                            subject_start, object_start = search_spo_index(tokens, subject_sub_tokens,
+                                                                           object_sub_tokens)
+                            if subject_start == -1:
+                                subject_start = search(subject_sub_tokens, tokens)
+                            if object_start == -1:
+                                object_start = search(object_sub_tokens, tokens)
 
-                examples.append(
-                    Example(
-                        p_id=p_id,
-                        context=text_raw,
-                        tok_to_orig_start_index=tok_to_orig_start_index,
-                        tok_to_orig_end_index=tok_to_orig_end_index,
-                        bert_tokens=tokens,
-                        sub_entity_list=sub_ent_list,
-                        gold_answer=src_data['spo_list'],
-                        spoes=spoes
+                            if subject_start != -1 and object_start != -1:
+                                s = (subject_start, subject_start + len(subject_sub_tokens) - 1)
+                                o = (object_start, object_start + len(object_sub_tokens) - 1, predicate_label)
+                                if s not in spoes:
+                                    spoes[s] = []
+                                spoes[s].append(o)
 
-                    ))
+                    examples.append(
+                        Example(
+                            p_id=p_id,
+                            raw_text=src_data['text'],
+                            context=text_raw,
+                            tok_to_orig_start_index=tok_to_orig_start_index,
+                            tok_to_orig_end_index=tok_to_orig_end_index,
+                            bert_tokens=tokens,
+                            sub_entity_list=sub_ent_list,
+                            gold_answer=src_data['spo_list'],
+                            spoes=spoes
+
+                        ))
         # print('total gold num is {}'.format(gold_num))
 
         logging.info("{} total size is  {} ".format(data_type, len(examples)))

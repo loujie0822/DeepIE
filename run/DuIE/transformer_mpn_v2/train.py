@@ -3,10 +3,9 @@ import logging
 import sys
 import time
 from warnings import simplefilter
-
+import json
 import numpy as np
 import torch
-from torch import nn
 from tqdm import tqdm
 
 import models.spo_net.multi_pointer_net as mpn
@@ -34,7 +33,7 @@ class Trainer(object):
         self.model = mpn.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
-        if args.train_mode == "eval":
+        if args.train_mode == "predict":
             self.resume(args)
         logging.info('total gpu num is {}'.format(self.n_gpu))
         # if self.n_gpu > 1:
@@ -176,6 +175,34 @@ class Trainer(object):
         self.model.train()
         return res
 
+    def predict_data_set(self, chosen="dev"):
+
+        self.model.eval()
+
+        data_loader = self.data_loader_choice[chosen]
+        eval_file = self.eval_file_choice[chosen]
+        answer_dict = {i: [[], [], {}] for i in range(len(eval_file))}
+
+        last_time = time.time()
+        with torch.no_grad():
+            for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
+                self.forward(batch, chosen, eval=True, answer_dict=answer_dict)
+        used_time = time.time() - last_time
+        logging.info('chosen {} took : {} sec'.format(chosen, used_time))
+
+        self.convert2ressult(eval_file, answer_dict)
+
+        content =''
+        for key,ans_list in answer_dict.items():
+            out_put={}
+            out_put['text']=eval_file[int(key)].raw_text
+            out_put['spo_list'] = ans_list[1]
+            content +=json.dumps(out_put,ensure_ascii=False)+'\n'
+        with open('result.json','w') as fw:
+            fw.write(content)
+
+
+
     def show(self, chosen="dev"):
 
         self.model.eval()
@@ -194,12 +221,11 @@ class Trainer(object):
         entity_gold_num = 0
         tp, fp, fn = 0, 0, 0
         for key in answer_dict.keys():
-
             triple_gold = eval_file[key].gold_answer
             entity_gold = eval_file[key].sub_entity_list
 
-            entity_pred=answer_dict[key][0]
-            triple_pred=answer_dict[key][1]
+            entity_pred = answer_dict[key][0]
+            triple_pred = answer_dict[key][1]
 
             entity_em += len(set(entity_pred) & set(entity_gold))
             entity_pred_num += len(set(entity_pred))
@@ -330,7 +356,7 @@ class Trainer(object):
         for qid, subject, po_pred in zip(qids.data.cpu().numpy(), subject_preds.data.cpu().numpy(),
                                          po_preds.data.cpu().numpy()):
 
-            subject =tuple(subject.tolist())
+            subject = tuple(subject.tolist())
 
             if qid == -1:
                 continue
