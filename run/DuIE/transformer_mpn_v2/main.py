@@ -135,6 +135,8 @@ def main():
         # trainer.resume(args)
         # trainer.eval_data_set("train")
         trainer.eval_data_set("dev")
+    elif args.train_mode == "predict":
+        trainer.predict_data_set("dev")
     elif args.train_mode == "resume":
         # trainer.resume(args)
         trainer.show("dev")  # bad case analysis
