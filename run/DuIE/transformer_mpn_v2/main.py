@@ -73,8 +73,8 @@ def get_args():
 
 
 def bulid_dataset(args, spo_config, reader,tokenizer, debug=False):
-    train_src = args.input + "/demo_data.json"
-    dev_src = args.input + "/test_data.json"
+    train_src = args.input + "/train_data.json"
+    dev_src = args.input + "/dev_data.json"
 
     train_examples_file = args.cache_data + "/train-examples.pkl"
     dev_examples_file = args.cache_data + "/dev-examples.pkl"
