@@ -1,9 +1,11 @@
 # _*_ coding:utf-8 _*_
+import codecs
+import json
 import logging
 import sys
 import time
 from warnings import simplefilter
-import json
+
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -192,16 +194,14 @@ class Trainer(object):
 
         self.convert2ressult(eval_file, answer_dict)
 
-        content =''
-        for key,ans_list in answer_dict.items():
-            out_put={}
-            out_put['text']=eval_file[int(key)].raw_text
-            out_put['spo_list'] = ans_list[1]
-            content +=json.dumps(out_put,ensure_ascii=False)+'\n'
-        with open('result.json','w') as fw:
-            fw.write(content)
-
-
+        with codecs.open('result.json', 'w', 'utf-8') as f:
+            for key, ans_list in answer_dict.items():
+                out_put = {}
+                out_put['text'] = eval_file[int(key)].raw_text
+                out_put['spo_list'] = ans_list[1]
+                json_str = json.dumps(out_put, ensure_ascii=False)
+                f.write(json_str)
+                f.write('\n')
 
     def show(self, chosen="dev"):
 
