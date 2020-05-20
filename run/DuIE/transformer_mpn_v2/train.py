@@ -8,6 +8,7 @@ from warnings import simplefilter
 
 import numpy as np
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 
 import models.spo_net.multi_pointer_net as mpn
@@ -37,7 +38,7 @@ class Trainer(object):
         self.model.to(self.device)
         if args.train_mode == "predict":
             self.resume(args)
-        logging.info('total gpu num is {}'.format(self.n_gpu))
+        # logging.info('total gpu num is {}'.format(self.n_gpu))
         # if self.n_gpu > 1:
         #     self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
 
