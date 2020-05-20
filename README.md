@@ -6,14 +6,13 @@
 
 - **知乎专栏文章下载**：[nlp中的实体关系抽取方法总结](https://github.com/loujie0822/DeepIE/blob/jielou/docs/实体关系抽取算法总结.md)
 
-## Installation
+## Papers
 
-```shell
-$ git clone https://github.com/loujie0822/DeepIE
-$ cd DeepIE
-```
+- [ACL2020信息抽取相关论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/ACL2020信息抽取相关论文汇总.md)
+- [2019各顶会中的关系抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/2019各顶会中的关系抽取论文汇总.md)
+- [事件抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/事件抽取论文汇总.md)
 
-## Content 
+## Codes
 
 #### 1. 实体抽取
 
@@ -118,7 +117,6 @@ $ cd DeepIE
 
 ## TODO-list
 
-- [ ] 信息抽取领域的paper汇总：
 - [ ] 信息抽取领域的数据资源汇总：
   - 医疗
   - 金融
