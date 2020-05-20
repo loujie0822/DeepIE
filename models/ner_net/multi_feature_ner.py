@@ -37,7 +37,7 @@ class GazLSTM(nn.Module):
             char_feature_dim += self.biword_emb_dim
 
         if self.use_bert:
-            char_feature_dim = char_feature_dim + 768
+            char_feature_dim = char_feature_dim + 768*2
         print('total char_feature_dim is {}'.format(char_feature_dim))
 
         ## lstm model
@@ -61,13 +61,15 @@ class GazLSTM(nn.Module):
 
         self.drop = nn.Dropout(p=data.HP_dropout)
 
-        self.crf = CRF(data.label_alphabet_size, self.gpu,self.device)
+        self.crf = CRF(data.label_alphabet_size, self.gpu, self.device)
 
         if self.use_bert:
-            self.bert_encoder = BertModel.from_pretrained('transformer_cpt/bert/')
-            for p in self.bert_encoder.parameters():
+            self.bert_encoder_1 = BertModel.from_pretrained('transformer_cpt/bert/')
+            self.bert_encoder_2 = BertModel.from_pretrained('transformer_cpt/chinese_roberta_wwm_ext_pytorch/')
+            for p in self.bert_encoder_1.parameters():
                 p.requires_grad = False
-
+            for p in self.bert_encoder_2.parameters():
+                p.requires_grad = False
         if self.gpu:
             self.word_embedding = self.word_embedding.cuda(self.device)
             if self.use_biword:
@@ -76,7 +78,8 @@ class GazLSTM(nn.Module):
             self.hidden2tag = self.hidden2tag.cuda(self.device)
             self.crf = self.crf.cuda(self.device)
             if self.use_bert:
-                self.bert_encoder = self.bert_encoder.cuda(self.device)
+                self.bert_encoder_1 = self.bert_encoder_1.cuda(self.device)
+                self.bert_encoder_2 = self.bert_encoder_2.cuda(self.device)
 
     def get_tags(self, word_inputs, biword_inputs, mask, word_seq_lengths, batch_bert, bert_mask):
 
@@ -97,10 +100,15 @@ class GazLSTM(nn.Module):
         word_input_cat = torch.cat([word_inputs_d], dim=-1)  # (b,l,we+4*ge)
 
         if self.use_bert:
-            seg_id = torch.zeros(bert_mask.size()).long().cuda(self.device) if self.gpu else torch.zeros(bert_mask.size()).long()
-            outputs = self.bert_encoder(batch_bert, bert_mask, seg_id)
-            outputs = outputs[0][:, 1:-1, :]
-            word_input_cat = torch.cat([word_input_cat, outputs], dim=-1)
+            seg_id = torch.zeros(bert_mask.size()).long().cuda(self.device) if self.gpu else torch.zeros(
+                bert_mask.size()).long()
+            outputs_1 = self.bert_encoder_1(batch_bert, bert_mask, seg_id)
+            outputs_1 = outputs_1[0][:, 1:-1, :]
+
+            outputs_2 = self.bert_encoder_2(batch_bert, bert_mask, seg_id)
+            outputs_2 = outputs_2[0][:, 1:-1, :]
+
+            word_input_cat = torch.cat([word_input_cat, outputs_1, outputs_2], dim=-1)
 
         feature_out_d = self.NERmodel(word_input_cat, word_inputs.ne(0))
 
