@@ -9,7 +9,7 @@
 ## Papers
 
 - [ACL2020信息抽取相关论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/ACL2020信息抽取相关论文汇总.md)
-- [2019各顶会中的关系抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/2019各顶会中的关系抽取论文汇总.md)
+- [2019各顶会中的关系抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/2019各顶会中的关系抽取论文]汇总.md))
 - [事件抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/事件抽取论文汇总.md)
 
 ## Codes
