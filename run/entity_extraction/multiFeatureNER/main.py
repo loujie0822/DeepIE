@@ -19,10 +19,10 @@ import torch
 import torch.autograd as autograd
 import torch.optim as optim
 
-from models.ner_net.general_ner import GazLSTM as SeqModel
+from models.ner_net.multi_feature_ner import GazLSTM as SeqModel
 from models.ner_net.bert_finetune_ner import BertNER
-from run.entity_extraction.generalNER.utils.data import Data
-from run.entity_extraction.generalNER.utils.metric import get_ner_fmeasure
+from run.entity_extraction.multiFeatureNER.utils.data import Data
+from run.entity_extraction.multiFeatureNER.utils.metric import get_ner_fmeasure
 
 
 def data_initialization(data, train_file, dev_file, test_file):
@@ -470,7 +470,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_count', action='store_true', default=True)
-    parser.add_argument('--use_bert', action='store_true', default=False)
+    parser.add_argument('--use_bert', action='store_true', default=True)
 
     args = parser.parse_args()
 
