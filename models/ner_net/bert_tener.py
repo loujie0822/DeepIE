@@ -38,8 +38,8 @@ class BERT_TENER(nn.Module):
             embed_size += self.bert_embed.embed_size
 
         print('total embed_size is {}'.format(embed_size))
-
-        # self.in_fc = nn.Linear(embed_size, d_model)
+        print('BERT TENER')
+        self.in_fc = nn.Linear(embed_size, d_model)
         d_model = embed_size
         self.transformer = TransformerEncoder(num_layers, d_model, n_head, feedforward_dim, dropout,
                                               after_norm=after_norm, attn_type=attn_type,
