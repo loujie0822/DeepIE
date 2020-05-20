@@ -4,6 +4,12 @@
 __pycache__/
 settings.py
 
+models/ere_net
+run/entity_relation_jointed_extraction/
+run/DuIE
+models/spo_net/multi_pointer_net.py
+
+
 drug_jointed_bies/
 agumentNER/
 instance/
@@ -14,7 +20,6 @@ shell/
 pyscripts/
 .pytest_cache/
 .coverage
-run/entity_relation_jointed_extraction/drug_jointed_extract/
 run/attribute_extract/drug_mpn
 dist/
 build/
@@ -24,4 +29,6 @@ Pipfile
 
 .idea
 *.bak
+
+
 

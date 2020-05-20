@@ -3,8 +3,8 @@ import argparse
 import logging
 import os
 
-from run.attribute_extract.mpn.data_loader import Reader, Vocabulary, config, Feature
-from run.attribute_extract.mpn.train import Trainer
+from run.attribute_extract.drug_mpn.data_loader import Reader, Vocabulary, config, Feature
+from run.attribute_extract.drug_mpn.train import Trainer
 from utils.file_util import save, load
 
 logger = logging.getLogger()
@@ -162,7 +162,7 @@ def main():
     reader = Reader(seg_char=args.seg_char, max_len=args.max_len, entity_type=args.entity_type)
     vocab = Vocabulary()
 
-    eval_examples, data_loaders, char_emb = bulid_dataset(args, reader, vocab, debug=False)
+    eval_examples, data_loaders, char_emb = bulid_dataset(args, reader, vocab, debug=True)
 
     trainer = Trainer(args, data_loaders, eval_examples, char_emb, attribute_conf=config[args.entity_type])
 
