@@ -8,7 +8,7 @@ models/ere_net
 run/entity_relation_jointed_extraction/
 run/DuIE/
 models/spo_net/multi_pointer_net.py
-
+run/=spo_extraction
 
 drug_jointed_bies/
 agumentNER/
