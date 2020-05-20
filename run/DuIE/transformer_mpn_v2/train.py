@@ -195,7 +195,7 @@ class Trainer(object):
 
         self.convert2ressult(eval_file, answer_dict)
 
-        with codecs.open('result.json', 'w', 'utf-8') as f:
+        with codecs.open('result_6.json', 'w', 'utf-8') as f:
             for key, ans_list in answer_dict.items():
                 out_put = {}
                 out_put['text'] = eval_file[int(key)].raw_text

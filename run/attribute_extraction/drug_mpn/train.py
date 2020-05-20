@@ -9,8 +9,8 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-import models.attribute_extract_net.bert_mpn as bert_mpn
-import run.attribute_extract.drug_mpn.drug_mpn as mpn
+import models.attribute_net.bert_mpn as bert_mpn
+import run.attribute_extraction.drug_mpn.drug_mpn as mpn
 from utils.optimizer_util import set_optimizer
 
 logger = logging.getLogger(__name__)

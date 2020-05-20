@@ -26,9 +26,9 @@ class SPO(tuple):
 
     def __init__(self, spo):
         self.spox = (
-            tuple(tokenizer.tokenize(spo[0])),
+            tuple(tokenizer.tokenize(spo[0].replace(' ',''))),
             spo[1],
-            tuple(tokenizer.tokenize(spo[2])),
+            tuple(tokenizer.tokenize(spo[2].replace(' ',''))),
         )
 
     def __hash__(self):
@@ -58,7 +58,7 @@ class Trainer(object):
             self.model = mpn.ERENet(args, char_emb, spo_conf)
 
         self.model.to(self.device)
-        # self.resume(args)
+        self.resume(args)
         logging.info('total gpu num is {}'.format(self.n_gpu))
         if self.n_gpu > 1:
             self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])

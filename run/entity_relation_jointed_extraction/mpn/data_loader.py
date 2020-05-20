@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
-from config.baidu_spo_config import BAIDU_RELATION
+from config.spo_config_v1 import BAIDU_RELATION
 from layers.encoders.transformers.bert.bert_tokenization import BertTokenizer
 from utils.data_util import padding, _handle_pos_limit, find_position, spo_padding
 

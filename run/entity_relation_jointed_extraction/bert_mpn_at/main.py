@@ -7,7 +7,7 @@ import random
 import numpy as np
 import torch
 
-from config.baidu_spo_config import BAIDU_RELATION
+from config.spo_config_v1 import BAIDU_RELATION
 from run.entity_relation_jointed_extraction.bert_mpn_at.data_loader import Reader, Vocabulary, Feature
 from run.entity_relation_jointed_extraction.bert_mpn_at.train import Trainer
 from utils.file_util import save, load

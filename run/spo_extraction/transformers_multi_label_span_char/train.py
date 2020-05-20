@@ -113,20 +113,20 @@ class Trainer(object):
                                                                            epoch, current_loss))
                     global_loss = 0.0
 
-                # if step % 500 == 0 and epoch >= 6:
-                #     res_dev = self.eval_data_set("dev")
-                #     if res_dev['f1'] >= best_f1:
-                #         best_f1 = res_dev['f1']
-                #         logging.info("** ** * Saving fine-tuned model ** ** * ")
-                #         model_to_save = self.model.module if hasattr(self.model,
-                #                                                      'module') else self.model  # Only save the model it-self
-                #         output_model_file = args.output + "/pytorch_model.bin"
-                #         torch.save(model_to_save.state_dict(), str(output_model_file))
-                #         patience_stop = 0
-                #     else:
-                #         patience_stop += 1
-                #     if patience_stop >= args.patience_stop:
-                #         return
+                if step != 0 and step % 500 == 0 and epoch >= 6:
+                    res_dev = self.eval_data_set("dev")
+                    if res_dev['f1'] >= best_f1:
+                        best_f1 = res_dev['f1']
+                        logging.info("** ** * Saving fine-tuned model ** ** * ")
+                        model_to_save = self.model.module if hasattr(self.model,
+                                                                     'module') else self.model  # Only save the model it-self
+                        output_model_file = args.output + "/pytorch_model.bin"
+                        torch.save(model_to_save.state_dict(), str(output_model_file))
+                        patience_stop = 0
+                    else:
+                        patience_stop += 1
+                    if patience_stop >= args.patience_stop:
+                        return
 
             res_dev = self.eval_data_set("dev")
             if res_dev['f1'] >= best_f1:

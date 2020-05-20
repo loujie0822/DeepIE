@@ -3,7 +3,7 @@ import argparse
 import logging
 import os
 
-from config.baidu_spo_config import BAIDU_RELATION
+from config.spo_config_v1 import BAIDU_RELATION
 from run.entity_relation_jointed_extraction.mpn.data_loader import Reader, Vocabulary, Feature
 from run.entity_relation_jointed_extraction.mpn.train import Trainer
 from utils.file_util import save, load

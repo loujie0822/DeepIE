@@ -3,8 +3,8 @@ import argparse
 import logging
 import os
 
-from run.attribute_extraction.mpn.data_loader import Reader, Vocabulary, config, Feature
-from run.attribute_extraction.mpn.train import Trainer
+from run.attribute_extraction.data_loader import Reader, Vocabulary, config, Feature
+from run.attribute_extraction.train import Trainer
 from utils.file_util import save, load
 
 logger = logging.getLogger()
