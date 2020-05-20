@@ -50,9 +50,6 @@ class ERENet(nn.Module):
         self.classes_num = len(spo_conf)
 
         self.first_sentence_encoder = SentenceEncoder(args, args.char_emb_size)
-        # self.second_sentence_encoder = SentenceEncoder(args, args.hidden_size)
-        # self.token_entity_emb = nn.Embedding(num_embeddings=2, embedding_dim=config.hidden_size,
-        #                                      padding_idx=0)
         self.encoder_layer = TransformerEncoderLayer(args.hidden_size * 2, nhead=3)
         self.transformer_encoder = TransformerEncoder(self.encoder_layer, num_layers=1)
         self.LayerNorm = ConditionalLayerNorm(args.hidden_size * 2, eps=1e-12)
@@ -72,15 +69,10 @@ class ERENet(nn.Module):
 
         char_emb = self.char_emb(char_ids)
         word_emb = self.word_convert_char(self.word_emb(word_ids))
-        # word_emb = self.word_emb(word_ids)
         emb = char_emb + word_emb
-        # emb = char_emb
-        # subject_encoder = sent_encoder + self.token_entity_emb(token_type_id)
         sent_encoder = self.first_sentence_encoder(emb, seq_mask)
 
         if not is_eval:
-            # subject_encoder = self.token_entity_emb(token_type_ids)
-            # context_encoder = bert_encoder + subject_encoder
 
             sub_start_encoder = batch_gather(sent_encoder, subject_ids[:, 0])
             sub_end_encoder = batch_gather(sent_encoder, subject_ids[:, 1])
@@ -145,15 +137,14 @@ class ERENet(nn.Module):
                     token_type_ids.append(token_type_id)
 
             if len(qid_ids) == 0:
-                # print('len(qid_list)==0:')
-                qid_tensor = torch.tensor([-1, -1], dtype=torch.long).to(sent_encoder.device)
-                return qid_tensor, qid_tensor, qid_tensor
+                subject_ids = torch.zeros(1, 2).long().to(sent_encoder.device)
+                qid_tensor = torch.tensor([-1], dtype=torch.long).to(sent_encoder.device)
+                po_tensor = torch.zeros(1, sent_encoder.size(1)).long().to(sent_encoder.device)
+                return qid_tensor, subject_ids, po_tensor
 
-            # print('len(qid_list)!=========================0:')
             qids = torch.cat(qid_ids).to(sent_encoder.device)
             pass_ids = torch.cat(pass_ids).to(sent_encoder.device)
             sent_encoders = torch.cat(sent_encoders).to(sent_encoder.device)
-            # token_type_ids = torch.cat(token_type_ids).to(bert_encoder.device)
             subject_ids = torch.cat(subject_ids).to(sent_encoder.device)
 
             flag = False
@@ -161,31 +152,24 @@ class ERENet(nn.Module):
 
             sent_encoders_ = torch.split(sent_encoders, split_heads, dim=0)
             pass_ids_ = torch.split(pass_ids, split_heads, dim=0)
-            # token_type_ids_ = torch.split(token_type_ids, split_heads, dim=0)
             subject_encoder_ = torch.split(subject_ids, split_heads, dim=0)
-            # print('len(qid_list)!=========================1:')
             po_preds = list()
             for i in range(len(subject_encoder_)):
                 sent_encoders = sent_encoders_[i]
-                # token_type_ids = token_type_ids_[i]
                 pass_ids = pass_ids_[i]
                 subject_encoder = subject_encoder_[i]
 
                 if sent_encoders.size(0) == 1:
                     flag = True
-                    # print('flag = True**********')
                     sent_encoders = sent_encoders.expand(2, sent_encoders.size(1), sent_encoders.size(2))
                     subject_encoder = subject_encoder.expand(2, subject_encoder.size(1))
                     pass_ids = pass_ids.expand(2, pass_ids.size(1))
-                # print('len(qid_list)!=========================2:')
                 sub_start_encoder = batch_gather(sent_encoders, subject_encoder[:, 0])
                 sub_end_encoder = batch_gather(sent_encoders, subject_encoder[:, 1])
                 subject = torch.cat([sub_start_encoder, sub_end_encoder], 1)
                 context_encoder = self.LayerNorm(sent_encoders, subject)
                 context_encoder = self.transformer_encoder(context_encoder.transpose(1, 0),
                                                            src_key_padding_mask=pass_ids.eq(0)).transpose(0, 1)
-                # print('len(qid_list)!=========================3')
-                # context_encoder = self.LayerNorm(context_encoder)
                 po_pred = self.po_dense(context_encoder).reshape(subject_encoder.size(0), -1, self.classes_num, 2)
 
                 if flag:
