@@ -4,7 +4,9 @@
 
 ## TOP 
 
-- **知乎专栏文章下载**：[nlp中的实体关系抽取方法总结](https://github.com/loujie0822/DeepIE/blob/jielou/docs/实体关系抽取算法总结.md)
+- **知乎专栏文章**：[nlp中的实体关系抽取方法总结](https://github.com/loujie0822/DeepIE/blob/jielou/docs/实体关系抽取算法总结.md)
+- **知乎专栏文章**：[如何有效提升中文NER性能？词汇增强方法总结](https://zhuanlan.zhihu.com/p/142615620)
+- **知乎专栏文章**：[如何解决Transformer在NER任务中效果不佳的问题？](https://zhuanlan.zhihu.com/p/137315695)
 
 ## Papers
 
