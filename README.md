@@ -11,7 +11,7 @@
 ## Papers
 
 - [ACL2020信息抽取相关论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/ACL2020信息抽取相关论文汇总.md)
-- [IJCAI2020_信息抽取相关论文合集](https://github.com/loujie0822/DeepIE/blob/master/docs/IJCAI2020_信息抽取相关论文合集.md)
+- [IJCAI2020_信息抽取相关论文合集](https://github.com/loujie0822/DeepIE/blob/master/docs/IJCAI2020_%E4%BF%A1%E6%81%AF%E6%8A%BD%E5%8F%96%E7%9B%B8%E5%85%B3%E8%AE%BA%E6%96%87%E5%90%88%E9%9B%86%20.md)
 - [2019各顶会中的关系抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/2019各顶会中的关系抽取论文]汇总.md)
 - [事件抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/事件抽取论文汇总.md)
 - [历年来NER论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/历年来NER论文汇总.md)
