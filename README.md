@@ -11,6 +11,7 @@
 - [ACL2020信息抽取相关论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/ACL2020信息抽取相关论文汇总.md)
 - [2019各顶会中的关系抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/2019各顶会中的关系抽取论文]汇总.md)
 - [事件抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/事件抽取论文汇总.md)
+- [历年来NER论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/历年来NER论文汇总.md)
 
 ## Codes
 
@@ -42,13 +43,16 @@
 
 - **CCKS2020-医疗实体抽取**：
 
-(注：测试集与ccks2019一致)
+(注：测试集与ccks2019一致，去除ccks2020训练集中已经在2019测试集中的样本，下列指标未做规则处理和模型融合)
 
-| 方法                                         | f          | p          | r          |
-| -------------------------------------------- | ---------- | ---------- | ---------- |
-| char-bigram + lstm-crf                       | 87.52%     | 87.19%     | 87.85%     |
-| char-bigram-BERT + lstm-crf                  | 92.62%     | **92.46%** | 92.79%     |
-| char-bigram-BERT + lexion-augment + lstm-crf | **92.78%** | 92.36%     | **93.20%** |
+| 方法                                         | f      | p      | r      |
+| -------------------------------------------- | ------ | ------ | ------ |
+| char-bigram + lstm-crf                       | 82.68% | 83.14% | 82.22% |
+| char-bigram + lexion-augment + lstm-crf      | 83.12% | 83.10% | 83.14% |
+| char-bigram-BERT + lstm-crf                  | 83.12% | 83.04% | 83.21% |
+| char-bigram-BERT-RoBerta_wwm + lstm-crf      | 83.66% | 83.76% | 83.56% |
+| char-bigram-BERT-XLNet + lstm-crf            | 84.12% | 83.88% | 84.36% |
+| char-bigram-BERT + lexion-augment + lstm-crf | 84.50% | 84.32% | 84.67% |
 
 - **CCKS2020-面向试验鉴定的命名实体识别任务**：TODO
 
