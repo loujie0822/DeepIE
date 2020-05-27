@@ -4,11 +4,14 @@
 
 ## TOP 
 
-- **知乎专栏文章下载**：[nlp中的实体关系抽取方法总结](https://github.com/loujie0822/DeepIE/blob/jielou/docs/实体关系抽取算法总结.md)
+- **知乎专栏文章**：[nlp中的实体关系抽取方法总结](https://github.com/loujie0822/DeepIE/blob/jielou/docs/实体关系抽取算法总结.md)
+- **知乎专栏文章**：[如何有效提升中文NER性能？词汇增强方法总结](https://zhuanlan.zhihu.com/p/142615620)
+- **知乎专栏文章**：[如何解决Transformer在NER任务中效果不佳的问题？](https://zhuanlan.zhihu.com/p/137315695)
 
 ## Papers
 
 - [ACL2020信息抽取相关论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/ACL2020信息抽取相关论文汇总.md)
+- [IJCAI2020_信息抽取相关论文合集](https://github.com/loujie0822/DeepIE/blob/master/docs/IJCAI2020_信息抽取相关论文合集 .md)
 - [2019各顶会中的关系抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/2019各顶会中的关系抽取论文]汇总.md)
 - [事件抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/事件抽取论文汇总.md)
 - [历年来NER论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/历年来NER论文汇总.md)
