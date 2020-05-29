@@ -11,7 +11,7 @@
 ## Papers
 
 - [ACL2020信息抽取相关论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/ACL2020信息抽取相关论文汇总.md)
-- [IJCAI2020_信息抽取相关论文合集](https://github.com/loujie0822/DeepIE/blob/master/docs/IJCAI2020_%E4%BF%A1%E6%81%AF%E6%8A%BD%E5%8F%96%E7%9B%B8%E5%85%B3%E8%AE%BA%E6%96%87%E5%90%88%E9%9B%86%20.md)
+- [IJCAI2020信息抽取相关论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/IJCAI2020_%E4%BF%A1%E6%81%AF%E6%8A%BD%E5%8F%96%E7%9B%B8%E5%85%B3%E8%AE%BA%E6%96%87%E5%90%88%E9%9B%86%20.md)
 - [2019各顶会中的关系抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/2019各顶会中的关系抽取论文]汇总.md)
 - [事件抽取论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/事件抽取论文汇总.md)
 - [历年来NER论文汇总](https://github.com/loujie0822/DeepIE/blob/master/docs/历年来NER论文汇总.md)
@@ -19,6 +19,22 @@
 ## Codes
 
 #### 1. 实体抽取
+
+- **各主流方法在主要中文NER数据集上的表现情况**  [具体说明](https://github.com/loujie0822/DeepIE/blob/master/docs/各主流方法在中文NER上的表现情况.md)
+
+|                | **lexicon** | **Ontonotes** | **MSRA**  | **Resume** | **Weibo** |
+| -------------- | ----------- | ------------- | --------- | ---------- | --------- |
+| biLSTM         | ----        | 71.81         | 91.87     | 94.41      | 56.75     |
+| Lattice  LSTM  | 词表1       | 73.88         | 93.18     | 94.46      | 58.79     |
+| WC-LSTM        | 词表1       | 74.43         | 93.36     | 94.96      | 49.86     |
+| LR-CNN         | 词表1       | 74.45         | 93.71     | 95.11      | 59.92     |
+| CGN            | 词表2       | 74.79         | 93.47     | 94.12      | 63.09     |
+| LGN            | 词表1       | 74.85         | 93.63     | 95.41      | 60.15     |
+| Simple-Lexicon | 词表1       | 75.54         | 93.50     | **95.59**  | 61.24     |
+| FLAT           | 词表1       | **76.45**     | 94.12     | 95.45      | 60.32     |
+| FLAT           | 词表2       | 75.70         | **94.35** | 94.93      | **63.42** |
+| BERT           | ----        | 80.14         | 94.95     | 95.53      | 68.20     |
+| BERT+FLAT      | 词表1       | **81.82**     | **96.09** | **95.86**  | **68.55** |
 
 - **MSRA-NER**
 
