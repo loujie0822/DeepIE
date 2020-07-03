@@ -8,7 +8,7 @@
 
 ```
 export PYTHONPATH=`pwd`
-nohup python run/relation_extraction/etl_span_transformers/main.py 
+python run/relation_extraction/etl_span_transformers/main.py 
   --input data/BaiduIE_2020/  
   --output finetune_model_path/ 
   --bert_model transformers_model_path 
@@ -49,7 +49,11 @@ DeepIE中的relation_extraction共提供了四种方法
 | ETL-Span + word2vec + adversarial training | 80.38%     | 79.95%     | 80.82%     |
 | ETL-Span + BERT                            | **81.88%** | **82.35%** | **81.42%** |
 
+⚠️：ETL-Span + BERT将max_len改为256，f1达到**82.1**，使用ETL-Span + ROBERTa-large，f1为**82.6+**
+
 - 2020语言与智能技术竞赛：关系抽取任务
+
+⚠️要改变原有数据的标注模式，详见code说明。
 
 | 方法            | f(dev) | p(dev) | r(dev) |
 | --------------- | ------ | ------ | ------ |
