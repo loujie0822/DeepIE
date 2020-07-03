@@ -1,14 +1,14 @@
 #### 一、RUN
 
-1. git clone https://github.com/loujie0822/DeepIE.git ，同时切换到 jielou 的分支上
-2. 安装所依赖的虚拟环境
+1. git clone https://github.com/loujie0822/DeepIE.git .
+2. 安装所依赖的环境
 3. 上传数据：创建data/BaiduIE_2019/或data/BaiduIE_2020/，将数据集上传到这里
 4. 上传预训练模型：创建transformer_cpt/bert/，将模型相关参数上传到这里，如需要roberta则创建transformer_cpt/chinese_roberta_wwm_large_ext_pytorch/ 
 5. 运行
 
 ```
 export PYTHONPATH=`pwd`
-nohup python run/relation_extraction/etl_span_transformers/main.py 
+python run/relation_extraction/etl_span_transformers/main.py 
   --input data/BaiduIE_2020/  
   --output finetune_model_path/ 
   --bert_model transformers_model_path 
@@ -38,7 +38,7 @@ DeepIE中的relation_extraction共提供了四种方法
 
 #### 三、结果展示
 
-- 2019语言与智能技术竞赛：关系抽取任务
+- **2019语言与智能技术竞赛：关系抽取任务**
 
 | 方法                                       | f(dev)     | p(dev)     | r(dev)     |
 | ------------------------------------------ | ---------- | ---------- | ---------- |
@@ -49,7 +49,15 @@ DeepIE中的relation_extraction共提供了四种方法
 | ETL-Span + word2vec + adversarial training | 80.38%     | 79.95%     | 80.82%     |
 | ETL-Span + BERT                            | **81.88%** | **82.35%** | **81.42%** |
 
-- 2020语言与智能技术竞赛：关系抽取任务
+⚠️：ETL-Span + BERT将max_len改为256，f1达到**82.1**，使用ETL-Span + ROBERTa-large，f1为**82.6+**
+
+TODO：将多种词向量进行拼接（bigram+word2vec+BERT）
+
+- **2020语言与智能技术竞赛：关系抽取任务**
+
+  (**目前只是个baseline**)
+
+⚠️要改变原有数据的标注模式，详见code说明。
 
 | 方法            | f(dev) | p(dev) | r(dev) |
 | --------------- | ------ | ------ | ------ |
