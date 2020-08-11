@@ -9,9 +9,14 @@ Authors: daisongtai(daisongtai@baidu.com)
 Date:    2019/5/29 6:38 PM
 """
 from __future__ import print_function
-import sys
+
 import re
-import io
+
+from transformers import BertTokenizer
+
+
+max_seq_length = 500
+tokenizer = BertTokenizer.from_pretrained('transformer_cpt/bert', do_lower_case=True)
 
 LHan = [
     [0x2E80, 0x2E99],  # Han # So  [26] CJK RADICAL REPEAT, CJK RADICAL RAP
@@ -53,8 +58,10 @@ CN_PUNCTS = [(0x3002, "。"), (0xFF1F, "？"), (0xFF01, "！"), (0xFF0C, "，"),
              (0xFF09, "）"), (0x3014, "〔"), (0x3015, "〕"), (0x3010, "【"),
              (0x3011, "】"), (0x2014, "—"), (0x2026, "…"), (0x2013, "–"),
              (0xFF0E, "．"), (0x300A, "《"), (0x300B, "》"), (0x3008, "〈"),
-             (0x3009, "〉"), (0x2015, "―"), (0xff0d, "－"), (0x0020, " "),(0xFF5E, "～")]
-#(0xFF5E, "～"),
+             (0x2460, "①"), (0x2461, "②"), (0x2462, "③"), (0x2463, "④"),
+             (0x2464, "⑤"), (0x2465, "⑥"), (0x2466, "⑦"), (0x2467, "⑧"), (0x2468, "⑨"), (0x2469, "⑩"),
+             (0x3009, "〉"), (0x2015, "―"), (0xff0d, "－"), (0x0020, " "), (0xFF5E, "～")]
+# (0xFF5E, "～"),
 
 EN_PUNCTS = [[0x0021, 0x002F], [0x003A, 0x0040], [0x005B, 0x0060],
              [0x007B, 0x007E]]
@@ -121,12 +128,12 @@ if __name__ == '__main__':
     # print("―", extractor.is_chinese_or_punct("―"))
     # print("-", extractor.is_chinese_or_punct("-"))
 
-    text_raw="'ymx510335'"
+    text_raw = "1%～2%ALL患者有Burkitt淋巴瘤的形态学及免疫学特征（即FAB形态学分类中的L3型），常伴有腹部或其余部位的包块性疾病，可以将之视为极晚期Burkitt淋巴瘤，对这类患儿应采用晚期Burkitt淋巴瘤的治疗方案。"
 
     sub_text = []
     buff = ""
-    flag_en=False
-    flag_digit=False
+    flag_en = False
+    flag_digit = False
     for char in text_raw:
         if extractor.is_chinese_or_punct(char):
             if buff != "":
@@ -140,19 +147,36 @@ if __name__ == '__main__':
                 if buff != "" and flag_en:
                     sub_text.append(buff)
                     buff = ""
-                    flag_en =False
+                    flag_en = False
                 flag_digit = True
-                buff +=char
+                buff += char
             else:
                 if buff != "" and flag_digit:
                     sub_text.append(buff)
                     buff = ""
-                    flag_digit =False
+                    flag_digit = False
                 flag_en = True
-                buff +=char
-
+                buff += char
 
     if buff != "":
         sub_text.append(buff)
 
+    tok_to_orig_start_index = []
+    tok_to_orig_end_index = []
+    tokens = []
+    text_tmp = ''
+    for (i, token) in enumerate(sub_text):
+        sub_tokens = tokenizer.tokenize(token) if token != ' ' else []
+        text_tmp += token
+        for sub_token in sub_tokens:
+            tok_to_orig_start_index.append(len(text_tmp) - len(token))
+            tok_to_orig_end_index.append(len(text_tmp) - 1)
+            tokens.append(sub_token)
+            if len(tokens) >= max_seq_length - 2:
+                break
+        else:
+            continue
+        break
+
     print(sub_text)
+    print(tokens)
