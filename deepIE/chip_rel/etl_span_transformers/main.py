@@ -74,7 +74,7 @@ def get_args():
 
 def bulid_dataset(args, spo_config, reader, tokenizer, debug=False):
     train_src = args.input + "/train_data.json"
-    dev_src = args.input + "/test2_data.json"
+    dev_src = args.input + "/val_data.json"
 
     train_examples_file = args.cache_data + "/train-examples.pkl"
     dev_examples_file = args.cache_data + "/dev-examples.pkl"
@@ -126,7 +126,7 @@ def main():
     spo_conf = CMeIE_CONFIG if args.spo_version == 'v1' else None
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
     reader = Reader(spo_conf, tokenizer, max_seq_length=args.max_len)
-    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader, tokenizer, debug=False)
+    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader, tokenizer, debug=True)
     trainer = Trainer(args, data_loaders, eval_examples, spo_conf=spo_conf, tokenizer=tokenizer)
 
     if args.train_mode == "train":

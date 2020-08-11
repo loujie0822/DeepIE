@@ -5,11 +5,11 @@ from transformers import BertTokenizer
 from utils import extract_chinese_and_punct
 
 chineseandpunctuationextractor = extract_chinese_and_punct.ChineseAndPunctuationExtractor()
-
+moren_tokenizer = BertTokenizer.from_pretrained('transformer_cpt/bert/', do_lower_case=True)
 
 def covert_to_tokens(text, tokenizer=None, return_orig_index=False, max_seq_length=500):
     if not tokenizer:
-        tokenizer = BertTokenizer.from_pretrained('transformer_cpt/bert', do_lower_case=True)
+        tokenizer =moren_tokenizer
     sub_text = []
     buff = ""
     flag_en = False

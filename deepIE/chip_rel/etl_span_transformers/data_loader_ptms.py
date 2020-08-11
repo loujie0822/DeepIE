@@ -80,9 +80,6 @@ class Reader(object):
                 p_id += 1
                 data_line = json.loads(line.strip())
                 text_raw = data_line['text']
-                if data_type == 'test':
-                    break
-                spo_list = data_line['spo_list']
 
                 tokens, tok_to_orig_start_index, tok_to_orig_end_index = covert_to_tokens(text_raw,
                                                                                           tokenizer=self.tokenizer,
@@ -90,8 +87,23 @@ class Reader(object):
                                                                                           return_orig_index=True)
                 tokens = ["[CLS]"] + tokens + ["[SEP]"]
 
-                gold_ent_lst, gold_spo_lst = [], []
+                if 'spo_list' not in data_line:
+                    examples.append(
+                        Example(
+                            p_id=p_id,
+                            raw_text=data_line['text'],
+                            context=text_raw,
+                            tok_to_orig_start_index=tok_to_orig_start_index,
+                            tok_to_orig_end_index=tok_to_orig_end_index,
+                            bert_tokens=tokens,
+                            sub_entity_list=None,
+                            gold_answer=None,
+                            spoes=None
+                        ))
+                    continue
 
+                gold_ent_lst, gold_spo_lst = [], []
+                spo_list = data_line['spo_list']
                 spoes = {}
                 for spo in spo_list:
 
@@ -101,8 +113,8 @@ class Reader(object):
                     object = spo['object']['@value']
                     gold_spo_lst.append((subject, predicate, object))
 
-                    subject_sub_tokens = covert_to_tokens(subject)
-                    object_sub_tokens = covert_to_tokens(object)
+                    subject_sub_tokens = covert_to_tokens(subject,tokenizer=self.tokenizer)
+                    object_sub_tokens = covert_to_tokens(object,tokenizer=self.tokenizer)
                     subject_start, object_start = search_spo_index(tokens, subject_sub_tokens, object_sub_tokens)
 
                     predicate_label = self.spo_conf[predicate]
