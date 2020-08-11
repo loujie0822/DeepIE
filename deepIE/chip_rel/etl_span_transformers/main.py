@@ -42,6 +42,8 @@ def get_args():
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
 
+    parser.add_argument("--debug",
+                        action='store_true',)
     # bert parameters
     parser.add_argument("--do_lower_case",
                         action='store_true',
@@ -126,7 +128,7 @@ def main():
     spo_conf = CMeIE_CONFIG if args.spo_version == 'v1' else None
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
     reader = Reader(spo_conf, tokenizer, max_seq_length=args.max_len)
-    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader, tokenizer, debug=True)
+    eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader, tokenizer, debug=args.debug)
     trainer = Trainer(args, data_loaders, eval_examples, spo_conf=spo_conf, tokenizer=tokenizer)
 
     if args.train_mode == "train":
