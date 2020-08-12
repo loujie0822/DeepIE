@@ -8,6 +8,7 @@ from warnings import simplefilter
 
 import numpy as np
 import torch
+import torch.nn as nn
 from tqdm import tqdm
 
 import models.spo_net.etl_span_transformers as etl
@@ -34,21 +35,23 @@ class Trainer(object):
         self.model = etl.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
-        if args.train_mode == "predict":
+        if args.train_mode != "train":
             self.resume(args)
-        # logging.info('total gpu num is {}'.format(self.n_gpu))
-        # if self.n_gpu > 1:
-        #     self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
+        logging.info('total gpu num is {}'.format(self.n_gpu))
+        if self.n_gpu > 1:
+            self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
 
-        train_dataloader, dev_dataloader = data_loaders
-        train_eval, dev_eval = examples
+        train_dataloader, dev_dataloader, test_dataloader = data_loaders
+        train_eval, dev_eval, test_eval = examples
         self.eval_file_choice = {
             "train": train_eval,
             "dev": dev_eval,
+            "test": test_eval
         }
         self.data_loader_choice = {
             "train": train_dataloader,
             "dev": dev_dataloader,
+            "test": test_dataloader
         }
         # todo 稍后要改成新的优化器，并加入梯度截断
         self.optimizer = self.set_optimizer(args, self.model,
@@ -193,7 +196,7 @@ class Trainer(object):
 
         self.convert2result(eval_file, answer_dict)
 
-        with codecs.open('result_6.json', 'w', 'utf-8') as f:
+        with codecs.open('result_chip_0813v1.json', 'w', 'utf-8') as f:
             for key, ans_list in answer_dict.items():
                 out_put = {}
                 out_put['text'] = eval_file[int(key)].raw_text
@@ -224,11 +227,20 @@ class Trainer(object):
         spo_em, spo_pred_num, spo_gold_num = 0.0, 0.0, 0.0
 
         for key in answer_dict.keys():
+
+            context = eval_file[key].context
+
             entity_pred = answer_dict[key][0]
             entity_gold = eval_file[key].sub_entity_list
 
             triple_pred = answer_dict[key][1]
             triple_gold = eval_file[key].gold_answer
+
+            # if set(triple_pred) != set(triple_gold):
+            #     print()
+            #     print(context)
+            #     print(triple_pred)
+            #     print(triple_gold)
 
             ent_em += len(set(entity_pred) & set(entity_gold))
             ent_pred_num += len(set(entity_pred))
@@ -299,7 +311,7 @@ class Trainer(object):
             context = eval_file[qid.item()].context
             tok_to_orig_start_index = eval_file[qid.item()].tok_to_orig_start_index
             tok_to_orig_end_index = eval_file[qid.item()].tok_to_orig_end_index
-            start = np.where(po_pred[:, :, 0] > 0.6)
+            start = np.where(po_pred[:, :, 0] > 0.5)
             end = np.where(po_pred[:, :, 1] > 0.5)
 
             for _start, predicate1 in zip(*start):

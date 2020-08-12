@@ -1,9 +1,8 @@
 """
-随机选择subject
+不再随机选择subject，而是将其全部flatten
 """
 import json
 import logging
-import random
 from functools import partial
 
 import numpy as np
@@ -23,6 +22,7 @@ class Example(object):
                  p_id=None,
                  raw_text=None,
                  context=None,
+                 choice_sub=None,
                  tok_to_orig_start_index=None,
                  tok_to_orig_end_index=None,
                  bert_tokens=None,
@@ -32,6 +32,7 @@ class Example(object):
         self.p_id = p_id
         self.context = context
         self.raw_text = raw_text
+        self.choice_sub = choice_sub
         self.tok_to_orig_start_index = tok_to_orig_start_index
         self.tok_to_orig_end_index = tok_to_orig_end_index
         self.bert_tokens = bert_tokens
@@ -131,19 +132,34 @@ class Reader(object):
                     if subject_start == -1 or object_start == -1:
                         print('error')
                         print(subject_sub_tokens, object_sub_tokens, text_raw)
+                if data_type == 'train':
+                    for s in spoes.keys():
+                        examples.append(
+                            Example(
+                                p_id=p_id,
+                                context=text_raw,
+                                choice_sub=s,
+                                tok_to_orig_start_index=tok_to_orig_start_index,
+                                tok_to_orig_end_index=tok_to_orig_end_index,
+                                bert_tokens=tokens,
+                                sub_entity_list=gold_ent_lst,
+                                gold_answer=gold_spo_lst,
+                                spoes=spoes
 
-                examples.append(
-                    Example(
-                        p_id=p_id,
-                        context=text_raw,
-                        tok_to_orig_start_index=tok_to_orig_start_index,
-                        tok_to_orig_end_index=tok_to_orig_end_index,
-                        bert_tokens=tokens,
-                        sub_entity_list=gold_ent_lst,
-                        gold_answer=gold_spo_lst,
-                        spoes=spoes
+                            ))
+                else:
+                    examples.append(
+                        Example(
+                            p_id=p_id,
+                            context=text_raw,
+                            tok_to_orig_start_index=tok_to_orig_start_index,
+                            tok_to_orig_end_index=tok_to_orig_end_index,
+                            bert_tokens=tokens,
+                            sub_entity_list=gold_ent_lst,
+                            gold_answer=gold_spo_lst,
+                            spoes=spoes
 
-                    ))
+                        ))
                 gold_num += len(gold_spo_lst)
 
         logging.info('total gold spo num in {} is {}'.format(data_type, gold_num))
@@ -210,7 +226,11 @@ class SPODataset(Dataset):
                             subject_labels[s[0], 0] = 1
                             subject_labels[s[1], 1] = 1
                         # 随机选一个subject
-                        subject_ids = random.choice(list(spoes.keys()))
+                        # subject_ids = random.choice(list(spoes.keys()))
+
+                        # 非随机选一个subject
+                        subject_ids = example.choice_sub
+
                         # 对应的object标签
                         object_labels = np.zeros((len(token_ids), len(self.spo_config), 2), dtype=np.float32)
                         for o in spoes.get(subject_ids, []):

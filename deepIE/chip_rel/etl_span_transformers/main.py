@@ -10,7 +10,7 @@ import torch
 from transformers import BertTokenizer
 
 from deepIE.chip_rel.config.config import CMeIE_CONFIG
-from deepIE.chip_rel.etl_span_transformers.data_loader_ptms import Reader, Feature
+from deepIE.chip_rel.etl_span_transformers.data_loader_ptms_total_sub import Reader, Feature
 from deepIE.chip_rel.etl_span_transformers.train import Trainer
 from utils.file_util import save, load
 
@@ -43,7 +43,7 @@ def get_args():
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
 
     parser.add_argument("--debug",
-                        action='store_true',)
+                        action='store_true', )
     # bert parameters
     parser.add_argument("--do_lower_case",
                         action='store_true',
@@ -77,35 +77,46 @@ def get_args():
 def bulid_dataset(args, spo_config, reader, tokenizer, debug=False):
     train_src = args.input + "/train_data.json"
     dev_src = args.input + "/val_data.json"
+    test_src = args.input + "/test1.json"
 
     train_examples_file = args.cache_data + "/train-examples.pkl"
     dev_examples_file = args.cache_data + "/dev-examples.pkl"
+    test_examples_file = args.cache_data + "/test-examples.pkl"
 
     if not os.path.exists(train_examples_file):
         train_examples = reader.read_examples(train_src, data_type='train')
         dev_examples = reader.read_examples(dev_src, data_type='dev')
+        test_examples = reader.read_examples(test_src, data_type='test')
+
         save(train_examples_file, train_examples, message="train examples")
         save(dev_examples_file, dev_examples, message="dev examples")
+        save(test_examples_file, test_examples, message="test examples")
     else:
         logging.info('loading train cache_data {}'.format(train_examples_file))
         logging.info('loading dev cache_data {}'.format(dev_examples_file))
-        train_examples, dev_examples = load(train_examples_file), load(dev_examples_file)
+        logging.info('loading test cache_data {}'.format(test_examples_file))
+        train_examples, dev_examples,test_examples = load(train_examples_file), load(dev_examples_file),load(test_examples_file)
 
         logging.info('train examples size is {}'.format(len(train_examples)))
         logging.info('dev examples size is {}'.format(len(dev_examples)))
+        logging.info('test examples size is {}'.format(len(test_examples)))
 
     convert_examples_features = Feature(max_len=args.max_len, spo_config=spo_config, tokenizer=tokenizer)
 
     train_examples = train_examples[:2] if debug else train_examples
     dev_examples = dev_examples[:2] if debug else dev_examples
+    test_examples = test_examples[:2] if debug else test_examples
 
     train_data_set = convert_examples_features(train_examples, data_type='train')
     dev_data_set = convert_examples_features(dev_examples, data_type='dev')
+    test_data_set = convert_examples_features(test_examples, data_type='test')
+
     train_data_loader = train_data_set.get_dataloader(args.train_batch_size, shuffle=True, pin_memory=args.pin_memory)
     dev_data_loader = dev_data_set.get_dataloader(args.train_batch_size)
+    test_data_loader = test_data_set.get_dataloader(args.train_batch_size)
 
-    data_loaders = train_data_loader, dev_data_loader
-    eval_examples = train_examples, dev_examples
+    data_loaders = train_data_loader, dev_data_loader, test_data_loader
+    eval_examples = train_examples, dev_examples, test_examples
 
     return eval_examples, data_loaders, tokenizer
 
@@ -138,7 +149,7 @@ def main():
         # trainer.eval_data_set("train")
         trainer.eval_data_set("dev")
     elif args.train_mode == "predict":
-        trainer.predict_data_set("dev")
+        trainer.predict_data_set("test")
     elif args.train_mode == "resume":
         # trainer.resume(args)
         trainer.show("dev")  # bad case analysis
