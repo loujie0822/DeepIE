@@ -1,4 +1,7 @@
 # _*_ coding:utf-8 _*_
+"""
+spo_bert: 适用于中文 BERT 和 RoBERTa
+"""
 import argparse
 import logging
 import os
@@ -10,8 +13,8 @@ import torch
 from transformers import BertTokenizer
 
 from deepIE.chip_rel.config.config import CMeIE_CONFIG
-from deepIE.chip_rel.etl_span_transformers.data_loader_ptms_total_sub import Reader, Feature
-from deepIE.chip_rel.etl_span_transformers.train import Trainer
+from deepIE.chip_rel.spo_transformers.data_loader_ptms_total_sub import Reader, Feature
+from deepIE.chip_rel.spo_transformers.train import Trainer
 from utils.file_util import save, load
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -25,6 +28,7 @@ def get_args():
 
     # file parameters
     parser.add_argument("--input", default=None, type=str, required=True)
+    parser.add_argument("--res_path", default=None, type=str, required=False)
     parser.add_argument("--output"
                         , default=None, type=str, required=False,
                         help="The output directory where the model checkpoints and predictions will be written.")
@@ -48,7 +52,7 @@ def get_args():
     parser.add_argument("--do_lower_case",
                         action='store_true',
                         help="Whether to lower case the input text. True for uncased models, False for cased models.")
-    parser.add_argument("--warmup_proportion", default=0.1, type=float,
+    parser.add_argument("--warmup_proportion", default=0.04, type=float,
                         help="Proportion of training to perform linear learning rate warmup for. E.g., 0.1 = 10%% "
                              "of training.")
     parser.add_argument("--bert_model", default=None, type=str,
@@ -70,7 +74,7 @@ def get_args():
     parser.add_argument('--bidirectional', type=bool, default=True)
     parser.add_argument('--pin_memory', type=bool, default=False)
     args = parser.parse_args()
-    args.cache_data = args.input + '/bert_cache_data_{}/'.format(str(args.max_len))
+    args.cache_data = args.input + '/{}_cache_data_{}/'.format(str(args.bert_model).split('/')[1],str(args.max_len))
     return args
 
 
@@ -136,7 +140,7 @@ def main():
 
     logger.info("** ** * bulid dataset ** ** * ")
 
-    spo_conf = CMeIE_CONFIG if args.spo_version == 'v1' else None
+    spo_conf = CMeIE_CONFIG
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
     reader = Reader(spo_conf, tokenizer, max_seq_length=args.max_len)
     eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader, tokenizer, debug=args.debug)

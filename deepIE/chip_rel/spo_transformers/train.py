@@ -11,7 +11,9 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-import models.spo_net.etl_span_transformers as etl
+import models.spo_net.etl_span_transformers as etl_bert
+import models.spo_net.etl_span_albert as etl_albert
+
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -32,7 +34,14 @@ class Trainer(object):
 
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
-        self.model = etl.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+
+        if 'albert' in args.bert_model:
+            self.model = etl_albert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+        else:
+            """
+            通用预训练，适用于中文BERT，RoBRETa以及各种wwm
+            """
+            self.model = etl_bert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
         if args.train_mode != "train":
@@ -196,7 +205,7 @@ class Trainer(object):
 
         self.convert2result(eval_file, answer_dict)
 
-        with codecs.open('result_chip_0813v1.json', 'w', 'utf-8') as f:
+        with codecs.open(self.args.res_path, 'w', 'utf-8') as f:
             for key, ans_list in answer_dict.items():
                 out_put = {}
                 out_put['text'] = eval_file[int(key)].raw_text
