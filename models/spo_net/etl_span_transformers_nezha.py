@@ -2,7 +2,7 @@
 
 
 """
-适用于中文BERT,RoBERTa
+华为哪吒模型
 
 """
 
@@ -12,10 +12,10 @@ import warnings
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers import BertModel
-from transformers import BertPreTrainedModel
+
 
 from layers.encoders.transformers.bert.layernorm import ConditionalLayerNorm
+from layers.encoders.transformers.modeling_nezha import BertModel, BertPreTrainedModel
 from utils.data_util import batch_gather
 
 warnings.filterwarnings("ignore")
@@ -29,7 +29,7 @@ class ERENet(BertPreTrainedModel):
     def __init__(self, config, classes_num):
         super(ERENet, self).__init__(config, classes_num)
 
-        print('spo_transformers')
+        print('华为哪吒模型')
         self.classes_num = classes_num
 
         # BERT model
@@ -44,7 +44,7 @@ class ERENet(BertPreTrainedModel):
         self.subject_dense = nn.Linear(config.hidden_size, 2)
         self.loss_fct = nn.BCEWithLogitsLoss(reduction='none')
 
-        self.init_weights()
+        self.apply(self.init_bert_weights)
 
     def forward(self, q_ids=None, passage_ids=None, segment_ids=None, token_type_ids=None, subject_ids=None,
                 subject_labels=None,

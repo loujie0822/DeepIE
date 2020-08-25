@@ -13,8 +13,8 @@ import torch
 from transformers import BertTokenizer
 
 from deepIE.config.config import CMeIE_CONFIG
-from deepIE.chip_rel.spo_transformers.data_loader_ptms_total_sub import Reader, Feature
-from deepIE.chip_rel.spo_transformers.train import Trainer
+from deepIE.chip_rel.spo_transformers_freeze.data_loader_ptms_total_sub import Reader, Feature
+from deepIE.chip_rel.spo_transformers_freeze.train import Trainer
 from utils.file_util import save, load
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -47,12 +47,14 @@ def get_args():
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
 
     parser.add_argument("--debug",
-                        action='store_true', )
+                        action='store_true')
+    parser.add_argument("--warmup",
+                        action='store_true')
     # bert parameters
     parser.add_argument("--do_lower_case",
                         action='store_true',
                         help="Whether to lower case the input text. True for uncased models, False for cased models.")
-    parser.add_argument("--warmup_proportion", default=0.1, type=float,
+    parser.add_argument("--warmup_proportion", default=0.04, type=float,
                         help="Proportion of training to perform linear learning rate warmup for. E.g., 0.1 = 10%% "
                              "of training.")
     parser.add_argument("--bert_model", default=None, type=str,

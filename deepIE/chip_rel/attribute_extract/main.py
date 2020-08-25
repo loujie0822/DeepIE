@@ -1,7 +1,4 @@
 # _*_ coding:utf-8 _*_
-"""
-spo_bert: 适用于中文 BERT 和 RoBERTa
-"""
 import argparse
 import logging
 import os
@@ -13,8 +10,8 @@ import torch
 from transformers import BertTokenizer
 
 from deepIE.config.config import CMeIE_CONFIG
-from deepIE.chip_rel.spo_transformers.data_loader_ptms_total_sub import Reader, Feature
-from deepIE.chip_rel.spo_transformers.train import Trainer
+from deepIE.chip_rel.attribute_extract.data_loader_char import Reader, Feature
+from deepIE.chip_rel.attribute_extract.train import Trainer
 from utils.file_util import save, load
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -28,7 +25,7 @@ def get_args():
 
     # file parameters
     parser.add_argument("--input", default=None, type=str, required=True)
-    parser.add_argument("--res_path", default=None, type=str, required=False)
+    parser.add_argument("--res_path", default=None, type=str, required=True)
     parser.add_argument("--output"
                         , default=None, type=str, required=False,
                         help="The output directory where the model checkpoints and predictions will be written.")
@@ -52,7 +49,7 @@ def get_args():
     parser.add_argument("--do_lower_case",
                         action='store_true',
                         help="Whether to lower case the input text. True for uncased models, False for cased models.")
-    parser.add_argument("--warmup_proportion", default=0.1, type=float,
+    parser.add_argument("--warmup_proportion", default=0.04, type=float,
                         help="Proportion of training to perform linear learning rate warmup for. E.g., 0.1 = 10%% "
                              "of training.")
     parser.add_argument("--bert_model", default=None, type=str,
@@ -79,8 +76,8 @@ def get_args():
 
 
 def bulid_dataset(args, spo_config, reader, tokenizer, debug=False):
-    train_src = args.input + "/train_data.json"
-    dev_src = args.input + "/val_data.json"
+    train_src = args.input + "/train_attri_data.json"
+    dev_src = args.input + "/val_attri_data.json"
     test_src = args.input + "/test1.json"
 
     train_examples_file = args.cache_data + "/train-examples.pkl"
@@ -140,7 +137,7 @@ def main():
 
     logger.info("** ** * bulid dataset ** ** * ")
 
-    spo_conf = CMeIE_CONFIG
+    spo_conf = CMeIE_CONFIG if args.spo_version == 'v1' else None
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
     reader = Reader(spo_conf, tokenizer, max_seq_length=args.max_len)
     eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader, tokenizer, debug=args.debug)

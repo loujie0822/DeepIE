@@ -11,9 +11,9 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-import models.spo_net.etl_span_albert as albert
-import models.spo_net.etl_span_transformers as bert
-import models.spo_net.etl_span_transformers_nezha as nezha
+from deepIE.chip_ent.ent_extract_pointer import ent_po_net as ent_net
+from deepIE.chip_ent.ent_extract_pointer import ent_po_net_lstm as ent_net_lstm
+
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -26,6 +26,7 @@ class Trainer(object):
 
         self.args = args
         self.tokenizer = tokenizer
+        self.max_len = args.max_len-2
         self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
         self.n_gpu = torch.cuda.device_count()
 
@@ -34,16 +35,10 @@ class Trainer(object):
 
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
-
-        if 'albert' in args.bert_model:
-            self.model = albert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
-        elif 'nezha' in args.bert_model:
-            self.model = nezha.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+        if args.encoder_type=='lstm':
+            self.model = ent_net_lstm.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
         else:
-            """
-            通用预训练，适用于中文BERT，RoBRETa以及各种wwm
-            """
-            self.model = bert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+            self.model = ent_net.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
         if args.train_mode != "train":
@@ -69,37 +64,10 @@ class Trainer(object):
                                             train_steps=(int(
                                                 len(train_eval) / args.train_batch_size) + 1) * args.epoch_num)
 
-        # for group in self.optimizer.param_groups:
-        #     print(group['lr'])
-        #     print(group['weight_decay'])
-        #     # for p in group['params']:
-        #     #     print(group['lr'])
-
     def set_optimizer(self, args, model, train_steps=None):
         param_optimizer = list(model.named_parameters())
         param_optimizer = [n for n in param_optimizer if 'pooler' not in n[0]]
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-
-        # for n, p in param_optimizer:
-        #     if not n.startswith('bert') and not any(nd in n for nd in no_decay):
-        #         print(n)
-        # print('+'*10)
-        # for n, p in param_optimizer:
-        #     if not n.startswith('bert') and any(nd in n for nd in no_decay):
-        #         print(n)
-
-        # TODO:设置不同学习率
-        # optimizer_grouped_parameters = [
-        #     {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay) and n.startswith('bert')],
-        #      'weight_decay': 0.01,'lr':args.learning_rate},
-        #     {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay) and not n.startswith('bert')],
-        #      'weight_decay': 0.01, 'lr': args.learning_rate*10},
-        #     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay) and n.startswith('bert')],
-        #      'weight_decay': 0.0,'lr':args.learning_rate},
-        #     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay) and not n.startswith('bert')],
-        #      'weight_decay': 0.0, 'lr': args.learning_rate*10}
-        # ]
-
         optimizer_grouped_parameters = [
             {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
              'weight_decay': 0.01},
@@ -135,21 +103,6 @@ class Trainer(object):
                                                                            epoch, current_loss))
                     global_loss = 0.0
 
-                # if step % 500 == 0 and epoch >= 6:
-                #     res_dev = self.eval_data_set("dev")
-                #     if res_dev['f1'] >= best_f1:
-                #         best_f1 = res_dev['f1']
-                #         logging.info("** ** * Saving fine-tuned model ** ** * ")
-                #         model_to_save = self.model.module if hasattr(self.model,
-                #                                                      'module') else self.model  # Only save the model it-self
-                #         output_model_file = args.output + "/pytorch_model.bin"
-                #         torch.save(model_to_save.state_dict(), str(output_model_file))
-                #         patience_stop = 0
-                #     else:
-                #         patience_stop += 1
-                #     if patience_stop >= args.patience_stop:
-                #         return
-
             res_dev = self.eval_data_set("dev")
             if res_dev['f1'] >= best_f1:
                 best_f1 = res_dev['f1']
@@ -174,9 +127,9 @@ class Trainer(object):
 
         batch = tuple(t.to(self.device) for t in batch)
         if not eval:
-            input_ids, segment_ids, token_type_ids, subject_ids, subject_labels, object_labels = batch
-            loss = self.model(passage_ids=input_ids, segment_ids=segment_ids, token_type_ids=token_type_ids,
-                              subject_ids=subject_ids, subject_labels=subject_labels, object_labels=object_labels)
+            input_ids, token_type_ids, segment_ids, object_labels = batch
+            loss = self.model(passage_id=input_ids, token_type_id=token_type_ids, segment_id=segment_ids,
+                              object_labels=object_labels)
             if self.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu.
 
@@ -186,13 +139,13 @@ class Trainer(object):
             self.optimizer.zero_grad()
             return loss
         else:
-            p_ids, input_ids, segment_ids = batch
+            p_ids, input_ids, token_type_ids, segment_ids = batch
             eval_file = self.eval_file_choice[chosen]
-            qids, subject_pred, po_pred = self.model(q_ids=p_ids,
-                                                     passage_ids=input_ids,
-                                                     segment_ids=segment_ids,
-                                                     eval_file=eval_file, is_eval=eval)
-            ans_dict = self.convert_spo_contour(qids, subject_pred, po_pred, eval_file,
+            po_pred = self.model(passage_id=input_ids,
+                                 token_type_id=token_type_ids,
+                                 segment_id=segment_ids,
+                                 is_eval=eval)
+            ans_dict = self.convert_spo_contour(p_ids, po_pred, eval_file,
                                                 answer_dict)
             return ans_dict
 
@@ -202,7 +155,7 @@ class Trainer(object):
 
         data_loader = self.data_loader_choice[chosen]
         eval_file = self.eval_file_choice[chosen]
-        answer_dict = {i: [[], [], {}] for i in range(len(eval_file))}
+        answer_dict = {i: [[], []] for i in range(len(eval_file))}
 
         last_time = time.time()
         with torch.no_grad():
@@ -211,7 +164,7 @@ class Trainer(object):
         used_time = time.time() - last_time
         logging.info('chosen {} took : {} sec'.format(chosen, used_time))
 
-        self.convert2result(eval_file, answer_dict)
+        # self.convert2result(eval_file, answer_dict)
 
         res = self.evaluate(eval_file, answer_dict, chosen)
         self.model.train()
@@ -223,7 +176,7 @@ class Trainer(object):
 
         data_loader = self.data_loader_choice[chosen]
         eval_file = self.eval_file_choice[chosen]
-        answer_dict = {i: [[], [], {}] for i in range(len(eval_file))}
+        answer_dict = {i: [[], []] for i in range(len(eval_file))}
 
         last_time = time.time()
         with torch.no_grad():
@@ -232,7 +185,7 @@ class Trainer(object):
         used_time = time.time() - last_time
         logging.info('chosen {} took : {} sec'.format(chosen, used_time))
 
-        self.convert2result(eval_file, answer_dict)
+        # self.convert2result(eval_file, answer_dict)
 
         with codecs.open(self.args.res_path, 'w', 'utf-8') as f:
             for key, ans_list in answer_dict.items():
@@ -248,40 +201,20 @@ class Trainer(object):
                 f.write(json_str)
                 f.write('\n')
 
-    def show(self, chosen="dev"):
-
-        self.model.eval()
-        answer_dict = {}
-
-        data_loader = self.data_loader_choice[chosen]
-        with torch.no_grad():
-            for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
-                loss, answer_dict_ = self.forward(batch, chosen, eval=True)
-                answer_dict.update(answer_dict_)
-
     def evaluate(self, eval_file, answer_dict, chosen):
 
-        ent_em, ent_pred_num, ent_gold_num = 0.0, 0.0, 0.0
         spo_em, spo_pred_num, spo_gold_num = 0.0, 0.0, 0.0
 
         for key in answer_dict.keys():
             context = eval_file[key].context
-
-            entity_pred = answer_dict[key][0]
-            entity_gold = eval_file[key].sub_entity_list
-
+            triple_gold = answer_dict[key][0]
             triple_pred = answer_dict[key][1]
-            triple_gold = eval_file[key].gold_answer
 
             # if set(triple_pred) != set(triple_gold):
             #     print()
             #     print(context)
             #     print(triple_pred)
             #     print(triple_gold)
-
-            ent_em += len(set(entity_pred) & set(entity_gold))
-            ent_pred_num += len(set(entity_pred))
-            ent_gold_num += len(set(entity_gold))
 
             spo_em += len(set(triple_pred) & set(triple_gold))
             spo_pred_num += len(set(triple_pred))
@@ -291,17 +224,6 @@ class Trainer(object):
         r = spo_em / spo_gold_num if spo_gold_num != 0 else 0
         f = 2 * p * r / (p + r) if p + r != 0 else 0
 
-        ent_precision = 100.0 * ent_em / ent_pred_num if ent_pred_num > 0 else 0.
-        ent_recall = 100.0 * ent_em / ent_gold_num if ent_gold_num > 0 else 0.
-        ent_f1 = 2 * ent_recall * ent_precision / (ent_recall + ent_precision) if (
-                                                                                          ent_recall + ent_precision) != 0 else 0.0
-
-        print('============================================')
-        print("{}/entity_em: {},\tentity_pred_num&entity_gold_num: {}\t{} ".format(chosen, ent_em, ent_pred_num,
-                                                                                   ent_gold_num))
-        print(
-            "{}/entity_f1: {}, \tentity_precision: {},\tentity_recall: {} ".format(chosen, ent_f1, ent_precision,
-                                                                                   ent_recall))
         print('============================================')
         print("{}/em: {},\tpre&gold: {}\t{} ".format(chosen, spo_em, spo_pred_num, spo_gold_num))
         print("{}/f1: {}, \tPrecision: {},\tRecall: {} ".format(chosen, f * 100, p * 100,
@@ -332,35 +254,47 @@ class Trainer(object):
                     po_predict.append((sub_ent, predicate, obj_ent))
             answer_dict[qid][1].extend(po_predict)
 
-    def convert_spo_contour(self, qids, subject_preds, po_preds, eval_file, answer_dict):
+    def convert_spo_contour(self, qids, po_preds, eval_file, answer_dict):
 
-        for qid, subject, po_pred in zip(qids.data.cpu().numpy(), subject_preds.data.cpu().numpy(),
-                                         po_preds.data.cpu().numpy()):
+        for qid, po_pred in zip(qids.data.cpu().numpy(), po_preds.data.cpu().numpy()):
+            example = eval_file[qid.item()]
 
-            subject = tuple(subject.tolist())
+            text_id = example.text_id
+            tokens = example.bert_tokens
 
-            if qid == -1:
-                continue
-            spoes = answer_dict[qid][2]
-            if subject not in spoes:
-                spoes[subject] = []
-            tokens = eval_file[qid.item()].bert_tokens
-            context = eval_file[qid.item()].context
-            tok_to_orig_start_index = eval_file[qid.item()].tok_to_orig_start_index
-            tok_to_orig_end_index = eval_file[qid.item()].tok_to_orig_end_index
+            context = example.context
             start = np.where(po_pred[:, :, 0] > 0.5)
             end = np.where(po_pred[:, :, 1] > 0.5)
+
+            po_index_lst = []
 
             for _start, predicate1 in zip(*start):
                 if _start > len(tokens) - 2 or _start == 0:
                     continue
                 for _end, predicate2 in zip(*end):
                     if _start <= _end <= len(tokens) - 2 and predicate1 == predicate2:
-                        spoes[subject].append((_start, _end, predicate1))
+                        po_index_lst.append((_start, _end, predicate1))
                         break
+            po_lst = []
+            for po in po_index_lst:
+                start, end, p = po
+                ent_name = context[start - 1:end]
+                predicate = self.id2rel[p]
+                po_lst.append((start-1, end-1, ent_name, predicate))
 
-            if qid not in answer_dict:
-                raise ValueError('error in answer_dict ')
+            if text_id not in answer_dict:
+                raise ValueError('text_id error in answer_dict ')
             else:
-                answer_dict[qid][0].append(
-                    context[tok_to_orig_start_index[subject[0] - 1]:tok_to_orig_end_index[subject[1] - 1] + 1])
+                if example.is_split:
+                    split_index = example.span_index
+                    new_ent_lst = []
+                    for (start, end, ent_name, ent_type) in po_lst:
+                        start += split_index * self.max_len
+                        end += split_index * self.max_len
+                        new_ent_lst.append((start, end, ent_name, ent_type))
+                    po_lst = new_ent_lst
+
+                answer_dict[text_id][1].extend(po_lst)
+                if len(answer_dict[text_id][0]) > 1:
+                    continue
+                answer_dict[text_id][0]=example.g_gold_ent

@@ -9,15 +9,23 @@ from warnings import simplefilter
 import numpy as np
 import torch
 import torch.nn as nn
+from torch import optim
 from tqdm import tqdm
 
-import models.spo_net.etl_span_albert as albert
-import models.spo_net.etl_span_transformers as bert
-import models.spo_net.etl_span_transformers_nezha as nezha
+import models.spo_net.etl_span_albert as etl_albert
+import models.spo_net.etl_span_transformers_freeze as etl_bert
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 simplefilter(action='ignore', category=FutureWarning)
 logger = logging.getLogger(__name__)
+
+
+def lr_decay(optimizer, epoch, decay_rate, init_lr):
+    lr = init_lr * ((1 - decay_rate) ** epoch)
+    logging.info(" Learning rate is setted as: {}".format(lr))
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    return optimizer
 
 
 class Trainer(object):
@@ -36,21 +44,19 @@ class Trainer(object):
             torch.cuda.manual_seed_all(args.seed)
 
         if 'albert' in args.bert_model:
-            self.model = albert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
-        elif 'nezha' in args.bert_model:
-            self.model = nezha.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+            self.model = etl_albert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
         else:
             """
             通用预训练，适用于中文BERT，RoBRETa以及各种wwm
             """
-            self.model = bert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+            self.model = etl_bert.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
         if args.train_mode != "train":
             self.resume(args)
-        logging.info('total gpu num is {}'.format(self.n_gpu))
-        if self.n_gpu > 1:
-            self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
+        # logging.info('total gpu num is {}'.format(self.n_gpu))
+        # if self.n_gpu > 1:
+        #     self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
 
         train_dataloader, dev_dataloader, test_dataloader = data_loaders
         train_eval, dev_eval, test_eval = examples
@@ -69,47 +75,24 @@ class Trainer(object):
                                             train_steps=(int(
                                                 len(train_eval) / args.train_batch_size) + 1) * args.epoch_num)
 
-        # for group in self.optimizer.param_groups:
-        #     print(group['lr'])
-        #     print(group['weight_decay'])
-        #     # for p in group['params']:
-        #     #     print(group['lr'])
-
     def set_optimizer(self, args, model, train_steps=None):
-        param_optimizer = list(model.named_parameters())
-        param_optimizer = [n for n in param_optimizer if 'pooler' not in n[0]]
-        no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+        if args.warmup:
+            param_optimizer = list(model.named_parameters())
+            param_optimizer = [n for n in param_optimizer if 'pooler' not in n[0]]
+            no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
+            optimizer_grouped_parameters = [
+                {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
+                 'weight_decay': 0.01},
+                {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+            ]
+            optimizer = BertAdam(optimizer_grouped_parameters,
+                                 lr=args.learning_rate,
+                                 warmup=args.warmup_proportion,
+                                 t_total=train_steps)
 
-        # for n, p in param_optimizer:
-        #     if not n.startswith('bert') and not any(nd in n for nd in no_decay):
-        #         print(n)
-        # print('+'*10)
-        # for n, p in param_optimizer:
-        #     if not n.startswith('bert') and any(nd in n for nd in no_decay):
-        #         print(n)
-
-        # TODO:设置不同学习率
-        # optimizer_grouped_parameters = [
-        #     {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay) and n.startswith('bert')],
-        #      'weight_decay': 0.01,'lr':args.learning_rate},
-        #     {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay) and not n.startswith('bert')],
-        #      'weight_decay': 0.01, 'lr': args.learning_rate*10},
-        #     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay) and n.startswith('bert')],
-        #      'weight_decay': 0.0,'lr':args.learning_rate},
-        #     {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay) and not n.startswith('bert')],
-        #      'weight_decay': 0.0, 'lr': args.learning_rate*10}
-        # ]
-
-        optimizer_grouped_parameters = [
-            {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
-             'weight_decay': 0.01},
-            {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-        ]
-
-        optimizer = BertAdam(optimizer_grouped_parameters,
-                             lr=args.learning_rate,
-                             warmup=args.warmup_proportion,
-                             t_total=train_steps)
+        else:
+            parameters = filter(lambda p: p.requires_grad, model.parameters())
+            optimizer = optim.Adamax(parameters, lr=args.learning_rate)
         return optimizer
 
     def train(self, args):
@@ -119,6 +102,8 @@ class Trainer(object):
         self.model.train()
         step_gap = 20
         for epoch in range(int(args.epoch_num)):
+
+            # self.optimizer = lr_decay(self.optimizer, epoch, 0.05, self.args.learning_rate)
 
             global_loss = 0.0
 
