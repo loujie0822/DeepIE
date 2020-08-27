@@ -14,6 +14,7 @@ class EntExtractNet(BertPreTrainedModel):
 
     def __init__(self, config, classes_num):
         super(EntExtractNet, self).__init__(config, classes_num)
+        print('ent_po_net.py')
 
         self.bert = BertModel(config)
         # self.token_entity_emb = nn.Embedding(num_embeddings=2, embedding_dim=config.hidden_size,

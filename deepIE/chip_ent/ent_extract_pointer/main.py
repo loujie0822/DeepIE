@@ -43,8 +43,8 @@ def get_args():
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
 
-    parser.add_argument("--debug",
-                        action='store_true', )
+    parser.add_argument("--debug",action='store_true', )
+    parser.add_argument("--diff_lr", action='store_true', )
     # bert parameters
     parser.add_argument("--do_lower_case",
                         action='store_true',
