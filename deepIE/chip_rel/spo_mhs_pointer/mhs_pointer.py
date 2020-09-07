@@ -48,10 +48,9 @@ class MHSNet(nn.Module):
         mask = passage_ids != 0
 
         if is_eval:
-            ent_label_ids = (nn.Sigmoid()(ent_pre) > .5)[:, :, 0].long()
+            ent_label_ids = (nn.Sigmoid()(ent_pre) > .5)[:, :, 0].long().to(ent_pre.device)
         else:
-            ent_label_ids = torch.tensor(ent_ids[:, :, 0], dtype=torch.long)
-        print(ent_label_ids.device)
+            ent_label_ids = torch.tensor(ent_ids[:, :, 0], dtype=torch.long).to(ent_pre.device)
         ent_encoder = self.ent_emb(ent_label_ids)
 
         rel_encoder = torch.cat((bert_encoder, ent_encoder), dim=2)
@@ -64,8 +63,8 @@ class MHSNet(nn.Module):
         selection_logits = torch.einsum('bijh,rh->birj', uv, self.rel_emb.weight)
 
         if is_eval:
-            # return ent_pre, selection_logits
-            return ent_ids, rel_ids
+            return ent_pre, selection_logits
+            # return ent_ids, rel_ids
         else:
             ent_loss = self.loss_fct(ent_pre, ent_ids)
             ent_loss = ent_loss.mean(2)
@@ -73,7 +72,7 @@ class MHSNet(nn.Module):
 
             selection_loss = self.masked_BCEloss(mask, selection_logits, rel_ids)
 
-            loss = ent_loss + 100 * selection_loss
+            loss = ent_loss + 100*selection_loss
 
             return loss, ent_loss, selection_loss
 
@@ -87,5 +86,5 @@ class MHSNet(nn.Module):
                                                             selection_gold,
                                                             reduction='none')
         selection_loss = selection_loss.masked_select(selection_mask).sum()
-        selection_loss /= mask.sum()
+        selection_loss /= selection_mask.sum()
         return selection_loss

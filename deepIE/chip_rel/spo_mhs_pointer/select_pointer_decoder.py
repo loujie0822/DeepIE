@@ -73,6 +73,17 @@ def selection_decode(q_ids, eval_file, ent_pre, rel_pre):
                 ent_start[i] = ent_name
                 ents.append(ent_name)
 
+        # for i in end:
+        #     j=start[start<=i]
+        #     if i == 0 or i > len(context) - 2:
+        #         continue
+        #     if len(j) > 0:
+        #         j = j[-1]
+        #         if j > len(context) - 2:
+        #             continue
+        #         ent_name = raw_text[j - 1:i]
+        #         ent_start[i] = ent_name
+        #         ents.append(ent_name)
         ent_list.append(ents)
         ent_start_list.append(ent_start)
 
@@ -84,10 +95,10 @@ def selection_decode(q_ids, eval_file, ent_pre, rel_pre):
         b, s, p, o = idx[i].tolist()
         predicate = reversed_relation_vocab[p]
 
-        object = ent_start_list[b].get(s, '')
+        object = ent_start_list[b].get(o, '')
         if object == '':
             continue
-        subject = ent_start_list[b].get(o, '')
+        subject = ent_start_list[b].get(s, '')
         if subject == '':
             continue
         result[b].append((subject, predicate, object))
