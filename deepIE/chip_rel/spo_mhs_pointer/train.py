@@ -9,7 +9,8 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from deepIE.chip_rel.spo_mhs_pointer.mhs_pointer import MHSNet
+from deepIE.chip_rel.spo_mhs_pointer import mhs_pointer as bert
+from deepIE.chip_rel.spo_mhs_pointer import mhs_pointer_nezha as nezha
 from deepIE.chip_rel.spo_mhs_pointer.select_pointer_decoder import selection_decode
 from deepIE.config.config import CMeIE_CONFIG
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
@@ -36,8 +37,12 @@ class Trainer(object):
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
 
-        if args.use_bert:
-            self.model = MHSNet(args)
+        if 'nezha' in args.bert_model:
+            print('华为哪吒模型')
+            self.model = nezha.MHSNet(args)
+        else:
+            print('roberta类模型')
+            self.model = bert.MHSNet(args)
 
         self.model.to(self.device)
 
