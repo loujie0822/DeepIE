@@ -23,16 +23,16 @@ class MultiNonLinearClassifier(nn.Module):
     def __init__(self, hidden_size, num_label, dropout_rate):
         super(MultiNonLinearClassifier, self).__init__()
         self.num_label = num_label
-        self.classifier1 = nn.Linear(hidden_size, int(hidden_size / 2))
-        self.classifier2 = nn.Linear(int(hidden_size / 2), num_label)
+        self.classifier1 = nn.Linear(hidden_size, num_label)
+        # self.classifier2 = nn.Linear(int(hidden_size / 2), num_label)
         self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, input_features):
         input_features = self.dropout(input_features)
         features_output1 = self.classifier1(input_features)
-        features_output1 = nn.ReLU()(features_output1)
-        features_output2 = self.classifier2(features_output1)
-        return features_output2
+        # features_output1 = nn.ReLU()(features_output1)
+        # features_output2 = self.classifier2(features_output1)
+        return features_output1
 
 
 class EntExtractNet(BertPreTrainedModel):
@@ -78,7 +78,7 @@ class EntExtractNet(BertPreTrainedModel):
         span_matrix = torch.cat([start_extend, end_extend], 3)  # batch x seq_len x seq_len x 2*hidden
 
         span_logits = self.span_embedding(span_matrix)  # batch x seq_len x seq_len x 1
-        span_logits = torch.squeeze(span_logits)  # batch x seq_len x seq_len
+        span_logits = torch.squeeze(span_logits,-1)  # batch x seq_len x seq_len
 
         if not is_eval:
             start_positions = point_labels[:, :, 0]
@@ -106,17 +106,20 @@ class EntExtractNet(BertPreTrainedModel):
             span_loss = torch.sum(span_loss.view(-1) * span_mask.reshape(-1).float())
             span_loss = span_loss / valid_span_num.float()
 
+            # total_loss = start_loss + end_loss + span_loss
             total_loss = start_loss + end_loss + span_loss
 
             return total_loss, start_loss, end_loss, span_loss
         else:
-            # span_scores = torch.sigmoid(span_logits)  # batch x seq_len x seq_len
-            # start_labels = torch.argmax(start_logits, dim=-1)
-            # end_labels = torch.argmax(end_logits, dim=-1)
+            span_scores = torch.sigmoid(span_logits)  # batch x seq_len x seq_len
+            start_labels = torch.argmax(start_logits, dim=-1)
+            end_labels = torch.argmax(end_logits, dim=-1)
+            # print(span_scores.size(),start_labels.size())
+            return start_labels, end_labels, span_scores
 
-            start_positions = point_labels[:, :, 0]
-            end_positions = point_labels[:, :, 1]
+            # start_positions = point_labels[:, :, 0]
+            # end_positions = point_labels[:, :, 1]
+            # span_scores = torch.sigmoid(span_logits)
+            #
+            # return start_positions, end_positions, span_scores
 
-
-            return start_positions, end_positions, span_labels
-            # return start_labels, end_labels, span_scores
