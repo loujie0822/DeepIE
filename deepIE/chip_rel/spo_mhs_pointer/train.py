@@ -9,7 +9,8 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from deepIE.chip_rel.spo_mhs_pointer.mhs_pointer import MHSNet
+from deepIE.chip_rel.spo_mhs_pointer import mhs_pointer as bert
+from deepIE.chip_rel.spo_mhs_pointer import mhs_pointer_nezha as nezha
 from deepIE.chip_rel.spo_mhs_pointer.select_pointer_decoder import selection_decode
 from deepIE.config.config import CMeIE_CONFIG
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
@@ -36,8 +37,12 @@ class Trainer(object):
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
 
-        if args.use_bert:
-            self.model = MHSNet(args)
+        if 'nezha' in args.bert_model:
+            print('华为哪吒模型')
+            self.model = nezha.MHSNet(args)
+        else:
+            print('roberta类模型')
+            self.model = bert.MHSNet(args)
 
         self.model.to(self.device)
 
@@ -153,12 +158,12 @@ class Trainer(object):
                     current_crf_loss = global_crf_loss / step_gap
                     current_selection_loss = global_selection_loss / step_gap
                     print(
-                        u"step {} / {} of epoch {}, train/loss: {}\tcrf:{}\tsel:{}".format(step, len(
+                        u"step {} / {} of epoch {}, train/loss: {}\tner:{}\trel:{}".format(step, len(
                             self.data_loader_choice["train"]),
                                                                                            epoch,
-                                                                                           current_loss,
-                                                                                           current_crf_loss,
-                                                                                           current_selection_loss))
+                                                                                           round(current_loss*100,5),
+                                                                                           round(current_crf_loss*100,5),
+                                                                                           round(current_selection_loss*100,5)))
                     global_loss, global_crf_loss, global_selection_loss = 0.0, 0.0, 0.0
 
             res_dev = self.eval_data_set("dev")
@@ -208,7 +213,7 @@ class Trainer(object):
             answer_dict = self.convert_select_contour(eval_file, p_ids, passage_ids, ent_logits, rel_logits)
             # p_ids, passage_ids, segment_ids , ent_ids, rel_ids = batch
             # eval_file = self.eval_file_choice[chosen]
-            # answer_dict = convert_select_contour(eval_file, p_ids, passage_ids, ent_ids, rel_ids)
+            # answer_dict = self.convert_select_contour(eval_file, p_ids, passage_ids, ent_ids, rel_ids)
 
             return answer_dict
 
@@ -273,6 +278,7 @@ class Trainer(object):
             # if R != T:
             #     print(R)
             #     print(T)
+            #     print()
             X += len(R & T)
             Y += len(R)
             Z += len(T)

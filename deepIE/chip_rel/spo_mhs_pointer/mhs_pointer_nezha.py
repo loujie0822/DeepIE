@@ -4,10 +4,9 @@ import warnings
 import torch
 import torch.nn.functional as F
 from torch import nn
-from transformers import BertModel
 
 from deepIE.config.config import CMeIE_CONFIG
-
+from layers.encoders.transformers.modeling_nezha import BertModel
 warnings.filterwarnings("ignore")
 
 
