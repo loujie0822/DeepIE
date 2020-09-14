@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-from deepIE.chip_ent.ent_stacked_span import stacked_span as ent_net
+from deepIE.chip_ent.ent_mhs_pointer import mhs_pointer as ent_net
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -32,10 +32,8 @@ class Trainer(object):
 
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
-        if args.encoder_type == 'lstm':
-            self.model = ent_net_lstm.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
-        else:
-            self.model = ent_net.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+
+        self.model = ent_net.MHSNet(args)
 
         self.model.to(self.device)
         if args.train_mode != "train":
@@ -121,12 +119,12 @@ class Trainer(object):
                                     desc=u'training at epoch : %d ' % epoch, leave=False, file=sys.stdout):
 
                 loss, start_loss, end_loss, span_loss = self.forward(batch)
-
+                global_loss += loss
+                global_start_loss += start_loss
+                global_end_loss += end_loss
+                global_span_loss += span_loss
                 if step % step_gap == 0:
-                    global_loss += loss
-                    global_start_loss += start_loss
-                    global_end_loss += end_loss
-                    global_span_loss += span_loss
+
                     current_loss = global_loss / step_gap
                     current_start_loss = global_start_loss / step_gap
                     current_end_loss = global_end_loss / step_gap
@@ -384,7 +382,7 @@ class Trainer(object):
                     if candidate_end > len(tokens) - 2 or candidate_end == 0:
                         continue
                     for p in range(len(self.id2rel)):
-                        if span_score[tmp_start][candidate_end][p] >= threshold:
+                        if span_score[tmp_start][p][candidate_end] >= threshold:
                             span_triple_lst.append((tmp_start, candidate_end, p))
 
             po_lst = []

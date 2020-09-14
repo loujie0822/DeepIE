@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-from deepIE.chip_ent.ent_stacked_span import stacked_span as ent_net
+from deepIE.chip_ent.ent_mrc_span import mrc_span_matrix as ent_net
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -25,17 +25,14 @@ class Trainer(object):
         self.max_len = args.max_len - 2
         self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
         self.n_gpu = torch.cuda.device_count()
-        self.load_ent_dict()
 
         self.id2rel = {item: key for key, item in spo_conf.items()}
         self.rel2id = spo_conf
 
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
-        if args.encoder_type == 'lstm':
-            self.model = ent_net_lstm.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
-        else:
-            self.model = ent_net.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+
+        self.model = ent_net.MHSNet(args)
 
         self.model.to(self.device)
         if args.train_mode != "train":
@@ -66,7 +63,7 @@ class Trainer(object):
         param_optimizer = list(model.named_parameters())
         param_optimizer = [n for n in param_optimizer if 'pooler' not in n[0]]
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-        flag = 'module.bert' if  self.n_gpu > 1 else 'bert'
+        flag = 'module.bert' if self.n_gpu > 1 else 'bert'
 
         # TODO:设置不同学习率
         if args.diff_lr:
@@ -121,12 +118,11 @@ class Trainer(object):
                                     desc=u'training at epoch : %d ' % epoch, leave=False, file=sys.stdout):
 
                 loss, start_loss, end_loss, span_loss = self.forward(batch)
-
+                global_loss += loss
+                global_start_loss += start_loss
+                global_end_loss += end_loss
+                global_span_loss += span_loss
                 if step % step_gap == 0:
-                    global_loss += loss
-                    global_start_loss += start_loss
-                    global_end_loss += end_loss
-                    global_span_loss += span_loss
                     current_loss = global_loss / step_gap
                     current_start_loss = global_start_loss / step_gap
                     current_end_loss = global_end_loss / step_gap
@@ -144,6 +140,21 @@ class Trainer(object):
                                                                                                           current_span_loss * 100,
                                                                                                           5)))
                     global_loss, global_start_loss, global_end_loss, global_span_loss = 0.0, 0.0, 0.0, 0.0
+
+                if step % 3000 == 0 and step!=0:
+                    res_dev = self.eval_data_set("dev")
+                    if res_dev['f1'] >= best_f1:
+                        best_f1 = res_dev['f1']
+                        logging.info("** ** * Saving fine-tuned model ** ** * ")
+                        model_to_save = self.model.module if hasattr(self.model,
+                                                                     'module') else self.model  # Only save the model it-self
+                        output_model_file = args.output + "/pytorch_model.bin"
+                        torch.save(model_to_save.state_dict(), str(output_model_file))
+                        patience_stop = 0
+                    else:
+                        patience_stop += 1
+                    if patience_stop >= args.patience_stop:
+                        return
 
             res_dev = self.eval_data_set("dev")
             if res_dev['f1'] >= best_f1:
@@ -367,6 +378,8 @@ class Trainer(object):
             text_id = example.text_id
             tokens = example.bert_tokens
 
+            predicate = example.query_type
+
             context = example.context
 
             span_triple_lst = []
@@ -379,19 +392,26 @@ class Trainer(object):
                     continue
                 tmp_end = [tmp for tmp in end_labels if tmp >= tmp_start]
                 if len(tmp_end) == 0:
-                    continue
-                for candidate_end in tmp_end:
-                    if candidate_end > len(tokens) - 2 or candidate_end == 0:
                         continue
-                    for p in range(len(self.id2rel)):
-                        if span_score[tmp_start][candidate_end][p] >= threshold:
-                            span_triple_lst.append((tmp_start, candidate_end, p))
+                candidate_end =tmp_end[0]
+                span_triple_lst.append((tmp_start, candidate_end, predicate))
+
+            # for tmp_start in start_labels:
+            #     if tmp_start > len(tokens) - 2 or tmp_start == 0:
+            #         continue
+            #     tmp_end = [tmp for tmp in end_labels if tmp >= tmp_start]
+            #     if len(tmp_end) == 0:
+            #         continue
+            #     for candidate_end in tmp_end:
+            #         if candidate_end > len(tokens) - 2 or candidate_end == 0:
+            #             continue
+            #         if span_score[tmp_start][candidate_end] >= threshold:
+            #             span_triple_lst.append((tmp_start, candidate_end, predicate))
 
             po_lst = []
             for po in span_triple_lst:
-                start, end, p = po
+                start, end, predicate = po
                 ent_name = context[start - 1:end]
-                predicate = self.id2rel[p]
                 po_lst.append((start - 1, end - 1, ent_name, predicate))
 
             if text_id not in answer_dict:

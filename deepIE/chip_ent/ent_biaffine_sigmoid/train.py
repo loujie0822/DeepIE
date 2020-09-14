@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-from deepIE.chip_ent.ent_stacked_span import stacked_span as ent_net
+from deepIE.chip_ent.ent_biaffine_sigmoid import biaffine_sigmoid as ent_net
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -25,17 +25,14 @@ class Trainer(object):
         self.max_len = args.max_len - 2
         self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
         self.n_gpu = torch.cuda.device_count()
-        self.load_ent_dict()
 
         self.id2rel = {item: key for key, item in spo_conf.items()}
         self.rel2id = spo_conf
 
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
-        if args.encoder_type == 'lstm':
-            self.model = ent_net_lstm.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
-        else:
-            self.model = ent_net.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+
+        self.model = ent_net.EntExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
         if args.train_mode != "train":
@@ -66,7 +63,7 @@ class Trainer(object):
         param_optimizer = list(model.named_parameters())
         param_optimizer = [n for n in param_optimizer if 'pooler' not in n[0]]
         no_decay = ['bias', 'LayerNorm.bias', 'LayerNorm.weight']
-        flag = 'module.bert' if  self.n_gpu > 1 else 'bert'
+        flag = 'module.bert' if self.n_gpu > 1 else 'bert'
 
         # TODO:设置不同学习率
         if args.diff_lr:
@@ -120,30 +117,14 @@ class Trainer(object):
             for step, batch in tqdm(enumerate(self.data_loader_choice[u"train"]), mininterval=5,
                                     desc=u'training at epoch : %d ' % epoch, leave=False, file=sys.stdout):
 
-                loss, start_loss, end_loss, span_loss = self.forward(batch)
-
+                loss = self.forward(batch)
+                global_loss += loss
                 if step % step_gap == 0:
-                    global_loss += loss
-                    global_start_loss += start_loss
-                    global_end_loss += end_loss
-                    global_span_loss += span_loss
                     current_loss = global_loss / step_gap
-                    current_start_loss = global_start_loss / step_gap
-                    current_end_loss = global_end_loss / step_gap
-                    current_span_loss = global_span_loss / step_gap
                     print(
-                        u"step {} / {} of epoch {}, train/loss: {}\tstart:{}\tend:{}\tspan:{}".format(step, len(
-                            self.data_loader_choice["train"]), epoch, round(current_loss * 100, 5),
-                                                                                                      round(
-                                                                                                          current_start_loss * 100,
-                                                                                                          5),
-                                                                                                      round(
-                                                                                                          current_end_loss * 100,
-                                                                                                          5),
-                                                                                                      round(
-                                                                                                          current_span_loss * 100,
-                                                                                                          5)))
-                    global_loss, global_start_loss, global_end_loss, global_span_loss = 0.0, 0.0, 0.0, 0.0
+                        u"step {} / {} of epoch {}, train/loss: {}\t".format(step, len(
+                            self.data_loader_choice["train"]), epoch, round(current_loss * 100, 5)))
+                    global_loss = 0.0
 
             res_dev = self.eval_data_set("dev")
             if res_dev['f1'] >= best_f1:
@@ -169,30 +150,25 @@ class Trainer(object):
 
         batch = tuple(t.to(self.device) for t in batch)
         if not eval:
-            input_ids, token_type_ids, segment_ids, point_labels, span_labels = batch
-            loss, start_loss, end_loss, span_loss = self.model(passage_id=input_ids, token_type_id=token_type_ids,
-                                                               segment_id=segment_ids, point_labels=point_labels,
-                                                               span_labels=span_labels)
+            input_ids, segment_ids, span_labels = batch
+            loss = self.model(passage_id=input_ids,
+                              segment_id=segment_ids, span_labels=span_labels)
             if self.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu.
-                start_loss = start_loss.mean()
-                end_loss = end_loss.mean()
-                span_loss = span_loss.mean()
 
             loss.backward()
             loss = loss.item()
             self.optimizer.step()
             self.optimizer.zero_grad()
-            return loss, start_loss.item(), end_loss.item(), span_loss.item()
+            return loss
         else:
-            p_ids, input_ids, token_type_ids, segment_ids, point_labels, span_labels = batch
+            p_ids, input_ids, segment_ids, span_labels = batch
             eval_file = self.eval_file_choice[chosen]
-            start_pred, end_pred, span_scores = self.model(passage_id=input_ids,
-                                                           token_type_id=token_type_ids,
-                                                           segment_id=segment_ids, point_labels=point_labels,
-                                                           span_labels=span_labels,
-                                                           is_eval=eval)
-            ans_dict = self.convert_spo_contour(p_ids, start_pred, end_pred, span_scores, eval_file,
+            span_scores = self.model(passage_id=input_ids,
+                                     segment_id=segment_ids,
+                                     span_labels=span_labels,
+                                     is_eval=eval)
+            ans_dict = self.convert_spo_contour(p_ids, span_scores, eval_file,
                                                 answer_dict)
             return ans_dict
 
@@ -356,58 +332,52 @@ class Trainer(object):
                     po_predict.append((sub_ent, predicate, obj_ent))
             answer_dict[qid][1].extend(po_predict)
 
-    def convert_spo_contour(self, qids, start_preds, end_preds, span_scores, eval_file, answer_dict, threshold=0.5):
+    def convert_spo_contour(self, qids, span_scores, eval_file, answer_dict, threshold=0.5):
 
-        for qid, start_pred, end_pred, span_score in zip(qids.data.cpu().numpy(),
-                                                         start_preds.data.cpu().numpy().tolist(),
-                                                         end_preds.data.cpu().numpy().tolist(),
-                                                         span_scores.data.cpu().numpy().tolist()):
+        rel_pre = torch.sigmoid(span_scores) > threshold
+
+        raw_list = []
+        for qid in qids.data.cpu().numpy():
             example = eval_file[qid.item()]
-
             text_id = example.text_id
             tokens = example.bert_tokens
-
             context = example.context
+            raw_list.append((text_id, tokens, context))
 
-            span_triple_lst = []
+        batch_num = len(raw_list)
+        result = [[] for _ in range(batch_num)]
+        idx = torch.nonzero(rel_pre.cpu())
+        for i in range(idx.size(0)):
+            b, tmp_start, p, tmp_end = idx[i].tolist()
+            if tmp_end < tmp_start:
+                continue
+            result[b].append((tmp_start, p, tmp_end))
 
-            start_labels = [idx for idx, tmp in enumerate(start_pred) if tmp != 0]
-            end_labels = [idx for idx, tmp in enumerate(end_pred) if tmp != 0]
-
-            for tmp_start in start_labels:
+        for i, res in enumerate(result):
+            text_id, tokens, context = raw_list[i]
+            po_lst = []
+            for (tmp_start, p, tmp_end) in res:
                 if tmp_start > len(tokens) - 2 or tmp_start == 0:
                     continue
-                tmp_end = [tmp for tmp in end_labels if tmp >= tmp_start]
-                if len(tmp_end) == 0:
+                if tmp_end > len(tokens) - 2 or tmp_end == 0:
                     continue
-                for candidate_end in tmp_end:
-                    if candidate_end > len(tokens) - 2 or candidate_end == 0:
-                        continue
-                    for p in range(len(self.id2rel)):
-                        if span_score[tmp_start][candidate_end][p] >= threshold:
-                            span_triple_lst.append((tmp_start, candidate_end, p))
+                ent_name = context[tmp_start - 1:tmp_end]
+                ent_type = self.id2rel[p]
+                po_lst.append((tmp_start - 1, tmp_end - 1, ent_name, ent_type))
 
-            po_lst = []
-            for po in span_triple_lst:
-                start, end, p = po
-                ent_name = context[start - 1:end]
-                predicate = self.id2rel[p]
-                po_lst.append((start - 1, end - 1, ent_name, predicate))
+            qid = qids[i]
+            example = eval_file[qid.item()]
+            if example.is_split:
+                split_index = example.span_index
+                new_ent_lst = []
+                for (start, end, ent_name, ent_type) in po_lst:
+                    start += split_index * self.max_len
+                    end += split_index * self.max_len
+                    new_ent_lst.append((start, end, ent_name, ent_type))
+                po_lst = new_ent_lst
 
-            if text_id not in answer_dict:
-                raise ValueError('text_id error in answer_dict ')
-            else:
-                if example.is_split:
-                    split_index = example.span_index
-                    new_ent_lst = []
-                    for (start, end, ent_name, ent_type) in po_lst:
-                        start += split_index * self.max_len
-                        end += split_index * self.max_len
-                        new_ent_lst.append((start, end, ent_name, ent_type))
-                    po_lst = new_ent_lst
-
-                answer_dict[text_id][1].extend(po_lst)
-                if len(answer_dict[text_id][0]) > 1:
-                    continue
-                answer_dict[text_id][0] = example.g_gold_ent
-                answer_dict[text_id][2] = example.g_raw_text
+            answer_dict[text_id][1].extend(po_lst)
+            if len(answer_dict[text_id][0]) > 1:
+                continue
+            answer_dict[text_id][0] = example.g_gold_ent
+            answer_dict[text_id][2] = example.g_raw_text
