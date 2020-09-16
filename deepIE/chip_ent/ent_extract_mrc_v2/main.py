@@ -25,7 +25,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # file parameters
-    parser.add_argument("--input", default='deepIE/chip_ent/ent_extract_mrc_v2/data_preprocess/chip2020/chip_2020_1_train_debug/',
+    parser.add_argument("--input", default='deepIE/chip_ent/ent_extract_mrc_v2/chip2020/chip_2020_1_train_debug/',
                         type=str, required=False)
     parser.add_argument("--res_path", default=None, type=str, required=False)
     parser.add_argument("--output", default='./output', type=str, required=False,
@@ -43,6 +43,7 @@ def get_args():
     parser.add_argument('--patience_stop', type=int, default=10, help='Patience for learning early stop')
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--seed', type=int, default=2007, help="random seed for initialization")
+    parser.add_argument('--cuda', action='store_true')
 
     parser.add_argument("--debug", action='store_true', )
     parser.add_argument("--diff_lr", action='store_true', )

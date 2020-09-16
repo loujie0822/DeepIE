@@ -26,15 +26,20 @@ class Trainer(object):
         self.args = args
         self.tokenizer = tokenizer
         self.max_len = args.max_len - 2
-        self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
-        self.n_gpu = torch.cuda.device_count()
+        self.n_gpu = 0
+        self.device = torch.device("cpu")
+        print(args.cuda)
+        if args.cuda:
+            self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
+            self.n_gpu = torch.cuda.device_count()
+            if self.n_gpu > 0:
+                torch.cuda.manual_seed_all(args.seed)
+
         self.load_ent_dict()
 
         self.id2rel = {item: key for key, item in spo_conf.items()}
         self.rel2id = spo_conf
 
-        if self.n_gpu > 0:
-            torch.cuda.manual_seed_all(args.seed)
         self.model = BertQueryNER(args)
 
         self.model.to(self.device)
