@@ -4,8 +4,6 @@ from transformers import BertModel
 from transformers import BertPreTrainedModel
 
 
-
-
 class EntExtractNet(BertPreTrainedModel):
     """
     Attribute Extract Net with Multi-label Pointer Network(MPN) based Entity-aware and

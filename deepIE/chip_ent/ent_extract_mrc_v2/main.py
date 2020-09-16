@@ -1,9 +1,9 @@
 # _*_ coding:utf-8 _*_
 import argparse
-import logging
 import os
 import random
 from warnings import simplefilter
+from utils.logger import logger_ins, logger
 
 import numpy as np
 import torch
@@ -15,10 +15,6 @@ from deepIE.config.config import CMeEnt_CONFIG, CMeEnt_Query
 from utils.file_util import save, load
 
 simplefilter(action='ignore', category=FutureWarning)
-
-logger = logging.getLogger()
-formats = '%(asctime)s:[%(filename)s:%(lineno)d] - %(message)s'
-logging.basicConfig(level=logging.INFO, format=formats)
 
 
 def get_args():
@@ -142,6 +138,7 @@ def main():
     if not os.path.exists(args.cache_data):
         print('mkdir {}'.format(args.cache_data))
         os.makedirs(args.cache_data)
+    logger_ins.set_log_file(os.path.join(args.output, 'logs.txt'))
 
     random.seed(args.seed)
     np.random.seed(args.seed)

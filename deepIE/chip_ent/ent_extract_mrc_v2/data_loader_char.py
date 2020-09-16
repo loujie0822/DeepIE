@@ -3,7 +3,6 @@
 """
 import codecs
 import copy
-import logging
 from functools import partial
 
 import numpy as np
@@ -12,6 +11,7 @@ from torch.utils.data import Dataset, DataLoader
 
 from utils import extract_chinese_and_punct
 from utils.data_util import sequence_padding
+from utils.logger import logger
 
 chineseandpunctuationextractor = extract_chinese_and_punct.ChineseAndPunctuationExtractor()
 
@@ -104,13 +104,13 @@ class Reader(object):
         return new_examples
 
     def read_examples(self, filename, data_type):
-        logging.info("Generating {} examples...".format(data_type))
+        logger.info("Generating {} examples...".format(data_type))
         examples = self._read(filename, data_type)
 
         # 加入query信息，更新examples
         examples = self.mrc_examples(examples)
-        logging.info("MRC-NER: {} total size is  {} ".format(data_type, len(examples)))
-        logging.info("=" * 15)
+        logger.info("MRC-NER: {} total size is  {} ".format(data_type, len(examples)))
+        logger.info("=" * 15)
         return examples
 
     def split_text(self, text):
@@ -187,12 +187,12 @@ class Reader(object):
                     p_id += 1
                 text_id += 1
 
-        logging.info('total size before split in {} is {}'.format(data_type, before_text_num))
-        logging.info('total size after split in {} is {}'.format(data_type, len(examples)))
-        logging.info('after_ent_num in {} is {}'.format(data_type, after_ent_num))
-        logging.info('before_ent_num in {} is {}'.format(data_type, before_ent_num))
-        logging.info("{} total size is  {} ".format(data_type, len(examples)))
-        logging.info("=" * 15)
+        logger.info('total size before split in {} is {}'.format(data_type, before_text_num))
+        logger.info('total size after split in {} is {}'.format(data_type, len(examples)))
+        logger.info('after_ent_num in {} is {}'.format(data_type, after_ent_num))
+        logger.info('before_ent_num in {} is {}'.format(data_type, before_ent_num))
+        logger.info("{} total size is  {} ".format(data_type, len(examples)))
+        logger.info("=" * 15)
         return examples
 
 
@@ -206,13 +206,13 @@ class Feature(object):
         return self.convert_examples_to_bert_features(examples, data_type)
 
     def convert_examples_to_bert_features(self, examples, data_type):
-        logging.info("convert {}  examples to features .".format(data_type))
+        logger.info("convert {}  examples to features .".format(data_type))
 
         examples2features = list()
         for index, example in enumerate(examples):
             examples2features.append((index, example))
 
-        logging.info("Built instances is Completed")
+        logger.info("Built instances is Completed")
         return MRCDataset(examples2features, spo_config=self.spo_config, data_type=data_type,
                           tokenizer=self.tokenizer, max_len=self.max_len)
 

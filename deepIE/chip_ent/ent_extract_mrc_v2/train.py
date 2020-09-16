@@ -1,6 +1,5 @@
 # _*_ coding:utf-8 _*_
 import codecs
-import logging
 import sys
 import time
 from warnings import simplefilter
@@ -9,14 +8,12 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-from deepIE.chip_ent.ent_extract_pointer import ent_po_net as ent_net
-from deepIE.chip_ent.ent_extract_pointer import ent_po_net_lstm as ent_net_lstm
 from deepIE.chip_ent.ent_extract_mrc_v2.model import BertQueryNER
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 from deepIE.config.config import CMeEnt_CONFIG
+from utils.logger import logger
 
 simplefilter(action='ignore', category=FutureWarning)
-logger = logging.getLogger(__name__)
 
 
 class Trainer(object):
@@ -47,7 +44,7 @@ class Trainer(object):
             self.resume(args)
 
         # if self.n_gpu > 1:
-        #     logging.info('total gpu num is {}'.format(self.n_gpu))
+        #     logger.info('total gpu num is {}'.format(self.n_gpu))
         #     self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
 
         train_dataloader, dev_dataloader, test_dataloader = data_loaders
@@ -74,7 +71,7 @@ class Trainer(object):
 
         # TODO:设置不同学习率
         if args.diff_lr:
-            logging.info('设置不同学习率')
+            logger.info('设置不同学习率')
             for n, p in param_optimizer:
                 if not n.startswith('bert') and not any(nd in n for nd in no_decay):
                     print(n)
@@ -96,7 +93,7 @@ class Trainer(object):
                  'weight_decay': 0.0, 'lr': args.learning_rate * 10}
             ]
         else:
-            logging.info('原始设置学习率设置')
+            logger.info('原始设置学习率设置')
 
             # TODO:原始设置
             optimizer_grouped_parameters = [
@@ -137,7 +134,7 @@ class Trainer(object):
             res_dev = self.eval_data_set("dev")
             if res_dev['f1'] >= best_f1:
                 best_f1 = res_dev['f1']
-                logging.info("** ** * Saving fine-tuned model ** ** * ")
+                logger.info("** ** * Saving fine-tuned model ** ** * ")
                 model_to_save = self.model.module if hasattr(self.model,
                                                              'module') else self.model  # Only save the model it-self
                 output_model_file = args.output + "/pytorch_model.bin"
@@ -150,7 +147,7 @@ class Trainer(object):
 
     def resume(self, args):
         resume_model_file = args.output + "/pytorch_model.bin"
-        logging.info("=> loading checkpoint '{}'".format(resume_model_file))
+        logger.info("=> loading checkpoint '{}'".format(resume_model_file))
         checkpoint = torch.load(resume_model_file, map_location='cpu')
         self.model.load_state_dict(checkpoint)
 
@@ -192,7 +189,7 @@ class Trainer(object):
             for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
                 self.forward(batch, chosen, eval=True, answer_dict=answer_dict)
         used_time = time.time() - last_time
-        logging.info('chosen {} took : {} sec'.format(chosen, used_time))
+        logger.info('chosen {} took : {} sec'.format(chosen, used_time))
 
         # self.convert2result(eval_file, answer_dict)
 
@@ -213,7 +210,7 @@ class Trainer(object):
             for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
                 self.forward(batch, chosen, eval=True, answer_dict=answer_dict)
         used_time = time.time() - last_time
-        logging.info('chosen {} took : {} sec'.format(chosen, used_time))
+        logger.info('chosen {} took : {} sec'.format(chosen, used_time))
 
         # self.convert2result(eval_file, answer_dict)
 
@@ -265,7 +262,7 @@ class Trainer(object):
         清洗结果 利用词典来纠正实体类型
         :return:
         """
-        logging.info('清洗结果 利用词典来纠正实体类型')
+        logger.info('清洗结果 利用词典来纠正实体类型')
         new_po_list = []
         for (s, e, ent_name, ent_type) in po_lst:
             ent_type_ = self.ent_dct.get(ent_name, None)
@@ -276,7 +273,7 @@ class Trainer(object):
 
     def load_ent_dict(self):
         ent_dct = {}
-        logging.info('loading ent dict in {}'.format('deepIE/chip_ent/data/' + 'ent_dict.txt'))
+        logger.info('loading ent dict in {}'.format('deepIE/chip_ent/data/' + 'ent_dict.txt'))
         with open('deepIE/chip_ent/data/' + 'ent_dict.txt', 'r') as fr:
             for line in fr.readlines():
                 ent_name, ent_type = line.strip().split()
