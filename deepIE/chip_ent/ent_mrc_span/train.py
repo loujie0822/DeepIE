@@ -23,8 +23,16 @@ class Trainer(object):
         self.args = args
         self.tokenizer = tokenizer
         self.max_len = args.max_len - 2
-        self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
-        self.n_gpu = torch.cuda.device_count()
+        self.n_gpu = 0
+        self.device = torch.device("cpu")
+        if args.cuda:
+            self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
+            self.n_gpu = torch.cuda.device_count()
+            if self.n_gpu > 0:
+                torch.cuda.manual_seed_all(args.seed)
+            if self.n_gpu > 1:
+                logging.info('total gpu num is {}'.format(self.n_gpu))
+                self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
 
         self.id2rel = {item: key for key, item in spo_conf.items()}
         self.rel2id = spo_conf
@@ -37,10 +45,6 @@ class Trainer(object):
         self.model.to(self.device)
         if args.train_mode != "train":
             self.resume(args)
-
-        if self.n_gpu > 1:
-            logging.info('total gpu num is {}'.format(self.n_gpu))
-            self.model = nn.DataParallel(self.model.cuda(), device_ids=[0, 1])
 
         train_dataloader, dev_dataloader, test_dataloader = data_loaders
         train_eval, dev_eval, test_eval = examples

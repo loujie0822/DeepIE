@@ -42,6 +42,7 @@ def get_args():
     parser.add_argument('--patience_stop', type=int, default=10, help='Patience for learning early stop')
     parser.add_argument('--device_id', type=int, default=0)
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
+    parser.add_argument('--cuda', action='store_true')
 
     parser.add_argument("--debug", action='store_true', )
     parser.add_argument("--diff_lr", action='store_true', )
