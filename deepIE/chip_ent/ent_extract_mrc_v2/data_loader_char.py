@@ -98,6 +98,9 @@ class Reader(object):
                 tokens = new_exam.bert_tokens + ["[SEP]"] + query_tokens
                 new_exam.bert_tokens = tokens
                 new_exam.is_impossible = False
+                # 只保留该query对应的po_list
+                po_list_query = [e for e in exam.po_list if e[2] == new_exam.query_id]
+                new_exam.po_list = po_list_query
                 if not new_exam.l_gold_ent:    # 无实体元素
                     new_exam.is_impossible = True
                 new_examples.append(new_exam)

@@ -16,12 +16,13 @@ from hashlib import sha256
 from functools import wraps
 
 from tqdm import tqdm
+from utils.logger import logger
 
 import boto3
 from botocore.exceptions import ClientError
 import requests
 
-logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+#logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 PYTORCH_PRETRAINED_BERT_CACHE = Path(os.getenv('PYTORCH_PRETRAINED_BERT_CACHE',
                                                Path.home() / '.pytorch_pretrained_bert'))

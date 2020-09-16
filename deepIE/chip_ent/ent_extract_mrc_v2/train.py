@@ -25,7 +25,6 @@ class Trainer(object):
         self.max_len = args.max_len - 2
         self.n_gpu = 0
         self.device = torch.device("cpu")
-        print(args.cuda)
         if args.cuda:
             self.device = torch.device("cuda:{}".format(args.device_id) if torch.cuda.is_available() else "cpu")
             self.n_gpu = torch.cuda.device_count()

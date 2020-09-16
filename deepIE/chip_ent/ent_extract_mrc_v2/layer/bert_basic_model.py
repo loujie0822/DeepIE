@@ -21,6 +21,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 
 from layer.bert_utils import cached_path
+from utils.logger import logger
 
 PRETRAINED_MODEL_ARCHIVE_MAP = {
     'bert-base-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased.tar.gz",
@@ -32,7 +33,7 @@ PRETRAINED_MODEL_ARCHIVE_MAP = {
     'bert-base-chinese': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese.tar.gz",
 }
 
-logger = logging.getLogger(__name__)
+#logger = logging.getLogger(__name__)
 
 CONFIG_NAME = "config.json"
 WEIGHTS_NAME = "pytorch_model.bin"

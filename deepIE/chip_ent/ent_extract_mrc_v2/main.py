@@ -21,7 +21,7 @@ def get_args():
     parser = argparse.ArgumentParser()
 
     # file parameters
-    parser.add_argument("--input", default='deepIE/chip_ent/ent_extract_mrc_v2/chip2020/chip_2020_1_train_debug/',
+    parser.add_argument("--input", default='deepIE/chip_ent/data/chip2020/chip_2020_1_train_debug/',
                         type=str, required=False)
     parser.add_argument("--res_path", default=None, type=str, required=False)
     parser.add_argument("--output", default='./output', type=str, required=False,
@@ -91,24 +91,25 @@ def bulid_dataset(args, spo_config, reader, tokenizer, debug=False):
     dev_examples_file = args.cache_data + "/dev-examples.pkl"
     test_examples_file = args.cache_data + "/test-examples.pkl"
 
-    # if not os.path.exists(train_examples_file):
-    train_examples = reader.read_examples(train_src, data_type='train')
-    dev_examples = reader.read_examples(dev_src, data_type='dev')
-    test_examples = reader.read_examples(test_src, data_type='test')
+    if not os.path.exists(train_examples_file):
+        train_examples = reader.read_examples(train_src, data_type='train')
+        dev_examples = reader.read_examples(dev_src, data_type='dev')
+        test_examples = reader.read_examples(test_src, data_type='test')
 
-    save(train_examples_file, train_examples, message="train examples")
-    save(dev_examples_file, dev_examples, message="dev examples")
-    save(test_examples_file, test_examples, message="test examples")
-    # else:
-    #     logging.info('loading train cache_data {}'.format(train_examples_file))
-    #     logging.info('loading dev cache_data {}'.format(dev_examples_file))
-    #     logging.info('loading test cache_data {}'.format(test_examples_file))
-    #     train_examples, dev_examples, test_examples = load(train_examples_file), load(dev_examples_file), load(
-    #         test_examples_file)
-    #
-    #     logging.info('train examples size is {}'.format(len(train_examples)))
-    #     logging.info('dev examples size is {}'.format(len(dev_examples)))
-    #     logging.info('test examples size is {}'.format(len(test_examples)))
+        save(train_examples_file, train_examples, message="train examples")
+        save(dev_examples_file, dev_examples, message="dev examples")
+        save(test_examples_file, test_examples, message="test examples")
+    else:
+        logger.info('loading train cache_data {}'.format(train_examples_file))
+        logger.info('loading dev cache_data {}'.format(dev_examples_file))
+        logger.info('loading test cache_data {}'.format(test_examples_file))
+        train_examples = load(train_examples_file)
+        dev_examples = load(dev_examples_file)
+        test_examples = load(test_examples_file)
+
+        logger.info('train examples size is {}'.format(len(train_examples)))
+        logger.info('dev examples size is {}'.format(len(dev_examples)))
+        logger.info('test examples size is {}'.format(len(test_examples)))
 
     convert_examples_features = Feature(max_len=args.max_len, spo_config=spo_config, tokenizer=tokenizer)
 
