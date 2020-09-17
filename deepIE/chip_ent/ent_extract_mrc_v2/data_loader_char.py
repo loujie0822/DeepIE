@@ -245,6 +245,7 @@ class MRCDataset(Dataset):
             batch_is_impossible,  batch_pos_start, batch_pos_end, batch_pos_span = [], [], [], []
             batch_query_ids = []
 
+            doc_len, query_len = [], []
             for example in examples:
                 token_ids = self.tokenizer.encode(example.bert_tokens)
                 token_type_ids = np.zeros(len(token_ids), dtype=np.long)
@@ -267,6 +268,8 @@ class MRCDataset(Dataset):
                 batch_pos_start.append(pos_start)
                 batch_pos_end.append(pos_end)
                 batch_pos_span.append(pos_span)
+                doc_len.append(len(example.context))
+                query_len.append(len(example.query))
 
             batch_token_ids = sequence_padding(batch_token_ids, is_float=False)
             batch_token_type_ids = sequence_padding(batch_token_type_ids, is_float=False)
@@ -275,7 +278,7 @@ class MRCDataset(Dataset):
             batch_pos_start = sequence_padding(batch_pos_start, is_float=False)
             batch_pos_end = sequence_padding(batch_pos_end, is_float=False)
             batch_pos_span, batch_pos_span_mask = sequence_padding_xy(batch_pos_span, is_float=True,
-                                                                      doc=len(example.context), query=len(example.query))
+                                                                      doc_lens=doc_len, query_lens=query_len)
 
             if not self.is_train:
                 return p_ids, batch_token_ids, batch_token_type_ids, batch_segment_ids, torch.IntTensor(batch_query_ids)
@@ -291,14 +294,14 @@ class MRCDataset(Dataset):
                           num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last)
 
 
-def sequence_padding_xy(inputs, length=None, padding=0, is_float=False, doc=0, query=0):
+def sequence_padding_xy(inputs, length=None, padding=0, is_float=False, doc_lens=None, query_lens=None):
     """Numpy函数，将序列padding到同一长度
     """
     if length is None:
         length = max([len(x) for x in inputs])
 
     outputs, outputs_mask = [], []
-    for x in inputs:
+    for x, isz, jsz in zip(inputs, doc_lens, query_lens):
         if len(x) < length:
             diff = length - len(x)
             x = np.concatenate((x, np.zeros((diff, x.shape[1]))), axis=0)
@@ -307,8 +310,8 @@ def sequence_padding_xy(inputs, length=None, padding=0, is_float=False, doc=0, q
             x = x[:length][:length]
         outputs.append(x)
         x_mask = np.zeros(x.shape, dtype=np.int)
-        x_mask[:doc+1, query+1:] = 1
-        x_mask[doc+1:, :query+1] = 1
+        x_mask[:isz+1, jsz+1:] = 1
+        x_mask[isz+1:, :jsz+1] = 1
         outputs_mask.append(x_mask)
 
     outputs = np.array(outputs)

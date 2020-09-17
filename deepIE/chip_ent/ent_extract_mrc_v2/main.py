@@ -11,7 +11,7 @@ from transformers import BertTokenizer
 
 from deepIE.chip_ent.ent_extract_mrc_v2.data_loader_char import Reader, Feature
 from deepIE.chip_ent.ent_extract_mrc_v2.train import Trainer
-from deepIE.config.config import CMeEnt_CONFIG, CMeEnt_Query
+from deepIE.config.config import CMeEnt_CONFIG, CMeEnt_Query_CONFIG
 from utils.file_util import save, load
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -147,7 +147,7 @@ def main():
 
     logger.info("** ** * bulid dataset ** ** * ")
 
-    spo_conf, query_conf = CMeEnt_CONFIG, CMeEnt_Query
+    spo_conf, query_conf = CMeEnt_CONFIG, CMeEnt_Query_CONFIG
     tokenizer = BertTokenizer.from_pretrained(args.bert_model, do_lower_case=True)
     reader = Reader(spo_conf, query_conf, tokenizer, max_seq_length=args.max_len)
     eval_examples, data_loaders, tokenizer = bulid_dataset(args, spo_conf, reader, tokenizer, debug=args.debug)

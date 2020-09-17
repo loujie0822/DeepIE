@@ -58,7 +58,7 @@ CMeEnt_CONFIG = {
     'dep': 8,  # 科室
 }
 
-CMeEnt_Query = {
+CMeEnt_Query_CONFIG = {
     # query max len default is 50
     "default": {
         "bod": "身体:身体物质,身体部位",
@@ -71,4 +71,16 @@ CMeEnt_Query = {
         "equ": "医疗设备:检查设备,治疗设备",
         "dep": "科室:科室",
     }
+}
+
+CMeEnt_Query = {
+    "bod": "身体:身体物质,身体部位",
+    "dis": "疾病:疾病或综合症,中毒或受伤,器官或细胞受损",
+    "sym": "临床表现:症状,体征",
+    "pro": "医疗程序:检查程序,治疗或预防程序",
+    "dru": "药物:药物",
+    "ite": "医学检验项目:医学检验项目",
+    "mic": "微生物类:微生物类",
+    "equ": "医疗设备:检查设备,治疗设备",
+    "dep": "科室:科室",
 }
