@@ -304,7 +304,7 @@ def sequence_padding_xy(inputs, length=None, padding=0, is_float=False, doc=0, q
             x = np.concatenate((x, np.zeros((diff, x.shape[1]))), axis=0)
             x = np.concatenate((x, np.zeros((x.shape[0], diff))), axis=1)
         else:
-            x[:length][:length]
+            x = x[:length][:length]
         outputs.append(x)
         x_mask = np.zeros(x.shape, dtype=np.int)
         x_mask[:doc+1, query+1:] = 1
