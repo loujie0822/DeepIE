@@ -220,9 +220,9 @@ class Feature(object):
                           tokenizer=self.tokenizer, max_len=self.max_len)
 
 
-class SPODataset(Dataset):
+class MRCDataset(Dataset):
     def __init__(self, data, spo_config, data_type, tokenizer=None, max_len=128):
-        super(SPODataset, self).__init__()
+        super(Dataset, self).__init__()
         self.spo_config = spo_config
         self.tokenizer = tokenizer
         self.max_len = max_len
@@ -242,48 +242,6 @@ class SPODataset(Dataset):
             p_ids = torch.tensor([p_id for p_id in p_ids], dtype=torch.long)
             batch_token_ids, batch_segment_ids = [], []
             batch_token_type_ids, batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], [], []
-            for example in examples:
-
-                token_ids = self.tokenizer.encode(example.bert_tokens)  # 自动增加了首尾的CLS和SEP的编码
-                token_type_ids = np.zeros(len(token_ids), dtype=np.long)
-                segment_ids = len(token_ids) * [0]
-
-                batch_token_ids.append(token_ids)
-                batch_token_type_ids.append(token_type_ids)
-                batch_segment_ids.append(segment_ids)
-
-                object_labels = np.zeros((len(token_ids), len(self.spo_config), 2), dtype=np.float32)
-                for o in example.po_list:
-                    object_labels[o[0] + 1, o[2], 0] = 1
-                    object_labels[o[1] + 1, o[2], 1] = 1
-                batch_object_labels.append(object_labels)
-
-            batch_token_ids = sequence_padding(batch_token_ids, is_float=False)
-            batch_token_type_ids = sequence_padding(batch_token_type_ids, is_float=False)
-            batch_segment_ids = sequence_padding(batch_segment_ids, is_float=False)
-
-            batch_object_labels = sequence_padding(batch_object_labels, padding=np.zeros((len(self.spo_config), 2)),
-                                                   is_float=True)
-            if not self.is_train:
-                return p_ids, batch_token_ids, batch_token_type_ids, batch_segment_ids
-            else:
-
-                return batch_token_ids, batch_token_type_ids, batch_segment_ids, batch_object_labels
-
-        return partial(collate)
-
-    def get_dataloader(self, batch_size, num_workers=0, shuffle=False, pin_memory=False, drop_last=False):
-        return DataLoader(self, batch_size=batch_size, shuffle=shuffle, collate_fn=self._create_collate_fn(),
-                          num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last)
-
-
-class MRCDataset(SPODataset):
-    def _create_collate_fn(self):
-        def collate(examples):
-            p_ids, examples = zip(*examples)
-            p_ids = torch.tensor([p_id for p_id in p_ids], dtype=torch.long)
-            batch_token_ids, batch_segment_ids = [], []
-            batch_token_type_ids, batch_subject_labels, batch_subject_ids, batch_object_labels = [], [], [], []
             batch_is_impossible,  batch_pos_start, batch_pos_end, batch_pos_span = [], [], [], []
             batch_query_ids = []
 
@@ -291,6 +249,7 @@ class MRCDataset(SPODataset):
                 token_ids = self.tokenizer.encode(example.bert_tokens)
                 token_type_ids = np.zeros(len(token_ids), dtype=np.long)
                 segment_ids = (len(example.context)+2) * [0] + (len(example.query)+1) * [1]
+                assert len(segment_ids) == len(token_ids)
 
                 batch_token_ids.append(token_ids)
                 batch_token_type_ids.append(token_type_ids)
@@ -316,7 +275,7 @@ class MRCDataset(SPODataset):
             batch_pos_start = sequence_padding(batch_pos_start, is_float=False)
             batch_pos_end = sequence_padding(batch_pos_end, is_float=False)
             batch_pos_span, batch_pos_span_mask = sequence_padding_xy(batch_pos_span, is_float=True,
-                                                           doc=len(example.context), query=len(example.query))
+                                                                      doc=len(example.context), query=len(example.query))
 
             if not self.is_train:
                 return p_ids, batch_token_ids, batch_token_type_ids, batch_segment_ids, torch.IntTensor(batch_query_ids)
@@ -326,6 +285,10 @@ class MRCDataset(SPODataset):
                        torch.BoolTensor(batch_is_impossible), torch.IntTensor(batch_query_ids)
 
         return partial(collate)
+
+    def get_dataloader(self, batch_size, num_workers=0, shuffle=False, pin_memory=False, drop_last=False):
+        return DataLoader(self, batch_size=batch_size, shuffle=shuffle, collate_fn=self._create_collate_fn(),
+                          num_workers=num_workers, pin_memory=pin_memory, drop_last=drop_last)
 
 
 def sequence_padding_xy(inputs, length=None, padding=0, is_float=False, doc=0, query=0):
