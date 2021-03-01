@@ -4,24 +4,21 @@
 __pycache__/
 settings.py
 
-models/ere_net
-run/entity_relation_jointed_extraction/
-run/DuIE/
-models/spo_net/multi_pointer_net.py
-run/spo_extraction
+#models/ere_net
+#run/entity_relation_jointed_extraction/
+#run/DuIE/
+#models/spo_net/multi_pointer_net.py
+#run/spo_extraction
+#run/attribute_extract/drug_mpn
+#drug_jointed_bies/
 
-drug_jointed_bies/
-agumentNER/
-instance/
 data/
 res/
 cpt/
-fastNLP/
 shell/
 pyscripts/
 .pytest_cache/
 .coverage
-run/attribute_extract/drug_mpn
 dist/
 build/
 *.egg-info/
