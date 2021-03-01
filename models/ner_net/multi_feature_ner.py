@@ -65,7 +65,7 @@ class GazLSTM(nn.Module):
 
         if self.use_bert:
             self.bert_encoder = BertModel.from_pretrained('transformer_cpt/bert/')
-            # self.xlnet_encoder = XLNetModel.from_pretrained('transformer_cpt/chinese_xlnet_base_pytorch')
+            self.xlnet_encoder = XLNetModel.from_pretrained('transformer_cpt/chinese_xlnet_base_pytorch')
             self.bert_encoder_wwm = BertModel.from_pretrained('transformer_cpt/chinese_roberta_wwm_ext_pytorch/')
             for p in self.bert_encoder.parameters():
                 p.requires_grad = False

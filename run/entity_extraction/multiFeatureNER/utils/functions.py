@@ -4,6 +4,7 @@ import numpy as np
 
 # from transformers.tokenization_bert import BertTokenizer
 from transformers import BertTokenizer
+from transformers.tokenization_xlnet import XLNetTokenizer
 
 NULLKEY = "-null-"
 
@@ -21,7 +22,8 @@ def normalize_word(word):
 def read_instance(input_file, word_alphabet, biword_alphabet, label_alphabet, number_normalized,
                   max_sent_length, bertpath):
     tokenizer = BertTokenizer.from_pretrained(bertpath, do_lower_case=True)
-
+    xlnet_tokenizer = XLNetTokenizer.from_pretrained('transformer_cpt/chinese_xlnet_base_pytorch/',
+                                                     add_special_tokens=False)
     in_lines = open(input_file, 'r', encoding="utf-8").readlines()
     instence_texts = []
     instence_Ids = []
@@ -67,6 +69,7 @@ def read_instance(input_file, word_alphabet, biword_alphabet, label_alphabet, nu
             texts = ['[CLS]'] + words[:max_sent_length] + ['[SEP]']
 
             bert_text_ids = tokenizer.convert_tokens_to_ids(texts)
+            xlnet_text_ids = xlnet_tokenizer.convert_tokens_to_ids(words[:max_sent_length])
             instence_texts.append([words, biwords, labels])
 
             word_Ids = word_Ids[:max_sent_length]
@@ -74,7 +77,7 @@ def read_instance(input_file, word_alphabet, biword_alphabet, label_alphabet, nu
             label_Ids = label_Ids[:max_sent_length]
 
             assert len(texts) - 2 == len(word_Ids)
-            instence_Ids.append([word_Ids, biword_Ids, label_Ids, bert_text_ids])
+            instence_Ids.append([word_Ids, biword_Ids, label_Ids, bert_text_ids, xlnet_text_ids])
 
             words = []
             biwords = []

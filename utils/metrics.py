@@ -16,8 +16,38 @@ class MetricBase(object):
         return self.evaluate(p_ids, pred, eval_file)
 
 
-def _bmeso_tag_to_spans(tags, ignore_labels=None):
-    """
+# def _bmeso_tag_to_spans(tags, ignore_labels=None):
+#     """
+#     给定一个tags的lis，比如['O', 'B-singer', 'M-singer', 'E-singer', 'O', 'O']。
+#     返回[('singer', (1, 4))] (左闭右开区间)
+#
+#     :param tags: List[str],
+#     :param ignore_labels: List[str], 在该list中的label将被忽略
+#     :return: List[Tuple[str, List[int, int]]]. [(label，[start, end])]
+#     """
+#     ignore_labels = set(ignore_labels) if ignore_labels else set()
+#
+#     spans = []
+#     prev_bmes_tag = None
+#     for idx, tag in enumerate(tags):
+#         tag = tag.lower()
+#         bmes_tag, label = tag[:1], tag[2:]
+#         if bmes_tag in ('b', 's'):
+#             spans.append((label, [idx, idx]))
+#         elif bmes_tag in ('m', 'e') and prev_bmes_tag in ('b', 'm') and label == spans[-1][0]:
+#             spans[-1][1][1] = idx
+#         elif bmes_tag == 'o':
+#             pass
+#         else:
+#             spans.append((label, [idx, idx]))
+#         prev_bmes_tag = bmes_tag
+#     return [(span[0], (span[1][0], span[1][1] + 1))
+#             for span in spans
+#             if span[0] not in ignore_labels
+#             ]
+
+def _bmeso_tag_to_spans(tags,text, ignore_labels=None):
+    r"""
     给定一个tags的lis，比如['O', 'B-singer', 'M-singer', 'E-singer', 'O', 'O']。
     返回[('singer', (1, 4))] (左闭右开区间)
 
@@ -41,11 +71,19 @@ def _bmeso_tag_to_spans(tags, ignore_labels=None):
         else:
             spans.append((label, [idx, idx]))
         prev_bmes_tag = bmes_tag
-    return [(span[0], (span[1][0], span[1][1] + 1))
-            for span in spans
-            if span[0] not in ignore_labels
-            ]
 
+    ent_lst = []
+    for span in spans:
+        ent_type=span[0]
+        start=span[1][0]
+        end=span[1][1]
+        if start == 1 and end > len(text):
+            continue
+        ent_name = text[start - 1:end]
+        ent_lst.append((start-1, end-1, ent_name, ent_type.upper()))
+
+
+    return ent_lst
 
 class SpanFPreRecMetric(MetricBase):
     def __init__(self, tag_type, pred=None, target=None, encoding_type='bmeso',
