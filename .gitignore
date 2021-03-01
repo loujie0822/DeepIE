@@ -12,7 +12,7 @@ settings.py
 #run/attribute_extract/drug_mpn
 
 data/
-res/
+deepIE/chip_rel/res/
 cpt/
 shell/
 pyscripts/
