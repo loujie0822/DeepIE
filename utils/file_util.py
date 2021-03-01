@@ -49,6 +49,7 @@ def write_json(obj, path):
                 encode('utf-8'))
 
 
+
 def _read_conll(path, encoding='utf-8', indexes=2, dropna=True):
     """
     Construct a generator to read conll items.

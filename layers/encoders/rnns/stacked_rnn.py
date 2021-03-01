@@ -56,6 +56,7 @@ class StackedBRNN(nn.Module):
                                       p=self.dropout_rate,
                                       training=self.training)
             # Forward
+            self.rnns[i].flatten_parameters()
             rnn_output = self.rnns[i](rnn_input)[0]
             outputs.append(rnn_output)
 
@@ -109,6 +110,7 @@ class StackedBRNN(nn.Module):
                                           training=self.training)
                 rnn_input = nn.utils.rnn.PackedSequence(dropout_input,
                                                         rnn_input.batch_sizes)
+            self.rnns[i].flatten_parameters()
             outputs.append(self.rnns[i](rnn_input)[0])
 
         # Unpack everything

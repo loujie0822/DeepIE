@@ -2,18 +2,16 @@
 
 
 """
-适用于中文BERT,RoBERTa
+仅适用于中文ALBERT
 
 """
-
-
 import warnings
 
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers import BertModel
-from transformers import BertPreTrainedModel
+from transformers import AlbertModel
+from transformers import AlbertPreTrainedModel
 
 from layers.encoders.transformers.bert.layernorm import ConditionalLayerNorm
 from utils.data_util import batch_gather
@@ -21,20 +19,18 @@ from utils.data_util import batch_gather
 warnings.filterwarnings("ignore")
 
 
-class ERENet(BertPreTrainedModel):
+class ERENet(AlbertPreTrainedModel):
     """
     ERENet : entity relation jointed extraction
     """
 
     def __init__(self, config, classes_num):
         super(ERENet, self).__init__(config, classes_num)
-
-        print('spo_transformers')
         self.classes_num = classes_num
 
         # BERT model
 
-        self.bert = BertModel(config)
+        self.albert = AlbertModel(config)
         self.token_entity_emb = nn.Embedding(num_embeddings=2, embedding_dim=config.hidden_size,
                                              padding_idx=0)
         self.LayerNorm = ConditionalLayerNorm(config.hidden_size, eps=config.layer_norm_eps)
@@ -51,7 +47,7 @@ class ERENet(BertPreTrainedModel):
                 object_labels=None, eval_file=None,
                 is_eval=False):
         mask = (passage_ids != 0).float()
-        bert_encoder = self.bert(passage_ids, token_type_ids=segment_ids, attention_mask=mask)[0]
+        bert_encoder = self.albert(passage_ids, token_type_ids=segment_ids, attention_mask=mask)[0]
         if not is_eval:
             sub_start_encoder = batch_gather(bert_encoder, subject_ids[:, 0])
             sub_end_encoder = batch_gather(bert_encoder, subject_ids[:, 1])

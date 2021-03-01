@@ -128,7 +128,7 @@ if __name__ == '__main__':
     # print("―", extractor.is_chinese_or_punct("―"))
     # print("-", extractor.is_chinese_or_punct("-"))
 
-    text_raw = "1%～2%ALL患者有Burkitt淋巴瘤的形态学及免疫学特征（即FAB形态学分类中的L3型），常伴有腹部或其余部位的包块性疾病，可以将之视为极晚期Burkitt淋巴瘤，对这类患儿应采用晚期Burkitt淋巴瘤的治疗方案。"
+    text_raw = "（3）抗甲状腺球蛋白及抗甲状腺微粒体抗体（TGA与TPO）：在桥本甲状腺炎患者血清中高滴度TGA90%～95%，TPO检测也有相应诊断价值"
 
     sub_text = []
     buff = ""

@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
-import models.spo_net.etl_span_transformers as etl
+import models.attribute_net.attribute_net as attr_net
 from layers.encoders.transformers.bert.bert_optimization import BertAdam
 
 simplefilter(action='ignore', category=FutureWarning)
@@ -32,7 +32,7 @@ class Trainer(object):
 
         if self.n_gpu > 0:
             torch.cuda.manual_seed_all(args.seed)
-        self.model = etl.ERENet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
+        self.model = attr_net.AttributeExtractNet.from_pretrained(args.bert_model, classes_num=len(spo_conf))
 
         self.model.to(self.device)
         if args.train_mode != "train":
@@ -97,21 +97,6 @@ class Trainer(object):
                                                                            epoch, current_loss))
                     global_loss = 0.0
 
-                # if step % 500 == 0 and epoch >= 6:
-                #     res_dev = self.eval_data_set("dev")
-                #     if res_dev['f1'] >= best_f1:
-                #         best_f1 = res_dev['f1']
-                #         logging.info("** ** * Saving fine-tuned model ** ** * ")
-                #         model_to_save = self.model.module if hasattr(self.model,
-                #                                                      'module') else self.model  # Only save the model it-self
-                #         output_model_file = args.output + "/pytorch_model.bin"
-                #         torch.save(model_to_save.state_dict(), str(output_model_file))
-                #         patience_stop = 0
-                #     else:
-                #         patience_stop += 1
-                #     if patience_stop >= args.patience_stop:
-                #         return
-
             res_dev = self.eval_data_set("dev")
             if res_dev['f1'] >= best_f1:
                 best_f1 = res_dev['f1']
@@ -136,9 +121,9 @@ class Trainer(object):
 
         batch = tuple(t.to(self.device) for t in batch)
         if not eval:
-            input_ids, segment_ids, token_type_ids, subject_ids, subject_labels, object_labels = batch
-            loss = self.model(passage_ids=input_ids, segment_ids=segment_ids, token_type_ids=token_type_ids,
-                              subject_ids=subject_ids, subject_labels=subject_labels, object_labels=object_labels)
+            input_ids, token_type_ids, segment_ids, object_labels = batch
+            loss = self.model(passage_id=input_ids, token_type_id=token_type_ids, segment_id=segment_ids,
+                              object_labels=object_labels)
             if self.n_gpu > 1:
                 loss = loss.mean()  # mean() to average on multi-gpu.
 
@@ -148,13 +133,13 @@ class Trainer(object):
             self.optimizer.zero_grad()
             return loss
         else:
-            p_ids, input_ids, segment_ids = batch
+            p_ids, input_ids, token_type_ids, segment_ids = batch
             eval_file = self.eval_file_choice[chosen]
-            qids, subject_pred, po_pred = self.model(q_ids=p_ids,
-                                                     passage_ids=input_ids,
-                                                     segment_ids=segment_ids,
-                                                     eval_file=eval_file, is_eval=eval)
-            ans_dict = self.convert_spo_contour(qids, subject_pred, po_pred, eval_file,
+            po_pred = self.model(passage_id=input_ids,
+                                 token_type_id=token_type_ids,
+                                 segment_id=segment_ids,
+                                 is_eval=eval)
+            ans_dict = self.convert_spo_contour(p_ids, po_pred, eval_file,
                                                 answer_dict)
             return ans_dict
 
@@ -164,7 +149,7 @@ class Trainer(object):
 
         data_loader = self.data_loader_choice[chosen]
         eval_file = self.eval_file_choice[chosen]
-        answer_dict = {i: [[], [], {}] for i in range(len(eval_file))}
+        answer_dict = {i: [[], []] for i in range(len(eval_file))}
 
         last_time = time.time()
         with torch.no_grad():
@@ -173,7 +158,7 @@ class Trainer(object):
         used_time = time.time() - last_time
         logging.info('chosen {} took : {} sec'.format(chosen, used_time))
 
-        self.convert2result(eval_file, answer_dict)
+        # self.convert2result(eval_file, answer_dict)
 
         res = self.evaluate(eval_file, answer_dict, chosen)
         self.model.train()
@@ -185,7 +170,7 @@ class Trainer(object):
 
         data_loader = self.data_loader_choice[chosen]
         eval_file = self.eval_file_choice[chosen]
-        answer_dict = {i: [[], [], {}] for i in range(len(eval_file))}
+        answer_dict = {i: [[], []] for i in range(len(eval_file))}
 
         last_time = time.time()
         with torch.no_grad():
@@ -194,9 +179,9 @@ class Trainer(object):
         used_time = time.time() - last_time
         logging.info('chosen {} took : {} sec'.format(chosen, used_time))
 
-        self.convert2result(eval_file, answer_dict)
+        # self.convert2result(eval_file, answer_dict)
 
-        with codecs.open('result_chip_0813v1.json', 'w', 'utf-8') as f:
+        with codecs.open(self.args.res_path, 'w', 'utf-8') as f:
             for key, ans_list in answer_dict.items():
                 out_put = {}
                 out_put['text'] = eval_file[int(key)].raw_text
@@ -210,41 +195,22 @@ class Trainer(object):
                 f.write(json_str)
                 f.write('\n')
 
-    def show(self, chosen="dev"):
-
-        self.model.eval()
-        answer_dict = {}
-
-        data_loader = self.data_loader_choice[chosen]
-        with torch.no_grad():
-            for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
-                loss, answer_dict_ = self.forward(batch, chosen, eval=True)
-                answer_dict.update(answer_dict_)
-
     def evaluate(self, eval_file, answer_dict, chosen):
 
         ent_em, ent_pred_num, ent_gold_num = 0.0, 0.0, 0.0
         spo_em, spo_pred_num, spo_gold_num = 0.0, 0.0, 0.0
 
         for key in answer_dict.keys():
-
             context = eval_file[key].context
 
-            entity_pred = answer_dict[key][0]
-            entity_gold = eval_file[key].sub_entity_list
-
             triple_pred = answer_dict[key][1]
-            triple_gold = eval_file[key].gold_answer
+            triple_gold = answer_dict[key][0]
 
             # if set(triple_pred) != set(triple_gold):
             #     print()
             #     print(context)
             #     print(triple_pred)
             #     print(triple_gold)
-
-            ent_em += len(set(entity_pred) & set(entity_gold))
-            ent_pred_num += len(set(entity_pred))
-            ent_gold_num += len(set(entity_gold))
 
             spo_em += len(set(triple_pred) & set(triple_gold))
             spo_pred_num += len(set(triple_pred))
@@ -295,35 +261,42 @@ class Trainer(object):
                     po_predict.append((sub_ent, predicate, obj_ent))
             answer_dict[qid][1].extend(po_predict)
 
-    def convert_spo_contour(self, qids, subject_preds, po_preds, eval_file, answer_dict):
+    def convert_spo_contour(self, qids, po_preds, eval_file, answer_dict):
 
-        for qid, subject, po_pred in zip(qids.data.cpu().numpy(), subject_preds.data.cpu().numpy(),
-                                         po_preds.data.cpu().numpy()):
+        for qid, po_pred in zip(qids.data.cpu().numpy(), po_preds.data.cpu().numpy()):
+            example = eval_file[qid.item()]
 
-            subject = tuple(subject.tolist())
-
-            if qid == -1:
-                continue
-            spoes = answer_dict[qid][2]
-            if subject not in spoes:
-                spoes[subject] = []
-            tokens = eval_file[qid.item()].bert_tokens
-            context = eval_file[qid.item()].context
-            tok_to_orig_start_index = eval_file[qid.item()].tok_to_orig_start_index
-            tok_to_orig_end_index = eval_file[qid.item()].tok_to_orig_end_index
+            text_id = example.text_id
+            tokens = example.bert_tokens
+            gold_spo=example.gold_answer
+            context = example.context
+            sub_index = example.choice_sub
+            sub_name = context[sub_index[0]:sub_index[1] + 1]
             start = np.where(po_pred[:, :, 0] > 0.5)
             end = np.where(po_pred[:, :, 1] > 0.5)
+
+            po_index_lst = []
 
             for _start, predicate1 in zip(*start):
                 if _start > len(tokens) - 2 or _start == 0:
                     continue
                 for _end, predicate2 in zip(*end):
                     if _start <= _end <= len(tokens) - 2 and predicate1 == predicate2:
-                        spoes[subject].append((_start, _end, predicate1))
+                        po_index_lst.append((_start, _end, predicate1))
                         break
+            spo_lst = []
+            for po in po_index_lst:
+                start, end, p = po
+                obj_name = context[start - 1:end]
+                predicate = self.id2rel[p]
+                spo_lst.append((sub_name, predicate, obj_name))
 
-            if qid not in answer_dict:
-                raise ValueError('error in answer_dict ')
+            if text_id not in answer_dict:
+                raise ValueError('text_id error in answer_dict ')
             else:
-                answer_dict[qid][0].append(
-                    context[tok_to_orig_start_index[subject[0] - 1]:tok_to_orig_end_index[subject[1] - 1] + 1])
+                answer_dict[text_id][1].extend(spo_lst)
+                if len(answer_dict[text_id][0])>1:
+                    continue
+                gold_spo=[(gold[0],gold[1],gold[2]) for gold in gold_spo]
+                answer_dict[text_id][0].extend(gold_spo)
+

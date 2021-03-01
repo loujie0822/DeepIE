@@ -2,23 +2,41 @@
 
 
 """
-适用于中文BERT,RoBERTa
+适用于中文BERT,RoBERTa,特征集成
 
 """
-
 
 import warnings
 
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers import BertModel
-from transformers import BertPreTrainedModel
 
+from layers.encoders.rnns.stacked_rnn import StackedBRNN
+from layers.encoders.transformers.bert.bert_model import BertModel
+from layers.encoders.transformers.bert.bert_pretrain import BertPreTrainedModel
 from layers.encoders.transformers.bert.layernorm import ConditionalLayerNorm
 from utils.data_util import batch_gather
 
 warnings.filterwarnings("ignore")
+
+
+class SentenceEncoder(nn.Module):
+    def __init__(self, input_size, hidden_size):
+        super(SentenceEncoder, self).__init__()
+        self.encoder = StackedBRNN(
+            input_size=input_size,
+            hidden_size=hidden_size,
+            num_layers=1,
+            dropout_rate=0.5,
+            dropout_output=True,
+            concat_layers=False,
+            rnn_type=nn.LSTM,
+            padding=True
+        )
+
+    def forward(self, input, mask):
+        return self.encoder(input, mask)
 
 
 class ERENet(BertPreTrainedModel):
@@ -29,14 +47,19 @@ class ERENet(BertPreTrainedModel):
     def __init__(self, config, classes_num):
         super(ERENet, self).__init__(config, classes_num)
 
-        print('spo_transformers')
+        print('spo_transformers_freeze')
         self.classes_num = classes_num
 
         # BERT model
 
         self.bert = BertModel(config)
-        self.token_entity_emb = nn.Embedding(num_embeddings=2, embedding_dim=config.hidden_size,
-                                             padding_idx=0)
+        for p in self.bert.parameters():
+            p.requires_grad = False
+
+        self.lstm_encoder = SentenceEncoder(config.hidden_size, config.hidden_size // 2)
+
+        # self.token_entity_emb = nn.Embedding(num_embeddings=2, embedding_dim=config.hidden_size,
+        #                                      padding_idx=0)
         self.LayerNorm = ConditionalLayerNorm(config.hidden_size, eps=config.layer_norm_eps)
 
         # pointer net work
@@ -44,14 +67,18 @@ class ERENet(BertPreTrainedModel):
         self.subject_dense = nn.Linear(config.hidden_size, 2)
         self.loss_fct = nn.BCEWithLogitsLoss(reduction='none')
 
-        self.init_weights()
+        # self.init_weights()
+        self.apply(self.init_bert_weights)
 
     def forward(self, q_ids=None, passage_ids=None, segment_ids=None, token_type_ids=None, subject_ids=None,
                 subject_labels=None,
                 object_labels=None, eval_file=None,
                 is_eval=False):
         mask = (passage_ids != 0).float()
-        bert_encoder = self.bert(passage_ids, token_type_ids=segment_ids, attention_mask=mask)[0]
+        bert_encoder_ = self.bert(passage_ids, token_type_ids=segment_ids, attention_mask=mask,
+                                  output_all_encoded_layers=True)[0][-4:]
+        bert_encoder_ = torch.cat([m.unsqueeze(0) for m in bert_encoder_]).mean(0)
+        bert_encoder = self.lstm_encoder(bert_encoder_, mask=passage_ids.eq(0))
         if not is_eval:
             sub_start_encoder = batch_gather(bert_encoder, subject_ids[:, 0])
             sub_end_encoder = batch_gather(bert_encoder, subject_ids[:, 1])

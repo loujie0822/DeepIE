@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 from transformers.modeling_bert import BertModel
-
+from transformers.modeling_xlnet import XLNetModel
 from layers.decoders.crf import CRF
 from layers.encoders.ner_layers import NERmodel
 
@@ -37,9 +37,9 @@ class GazLSTM(nn.Module):
             char_feature_dim += self.biword_emb_dim
 
         if self.use_bert:
-            char_feature_dim = char_feature_dim + 768*2
+            char_feature_dim = char_feature_dim + 768 * 2
         print('total char_feature_dim is {}'.format(char_feature_dim))
-
+        print('bert + bert_wwm multi feature')
         ## lstm model
         if self.model_type == 'lstm':
             lstm_hidden = self.hidden_dim
@@ -64,11 +64,14 @@ class GazLSTM(nn.Module):
         self.crf = CRF(data.label_alphabet_size, self.gpu, self.device)
 
         if self.use_bert:
-            self.bert_encoder_1 = BertModel.from_pretrained('transformer_cpt/bert/')
-            self.bert_encoder_2 = BertModel.from_pretrained('transformer_cpt/chinese_roberta_wwm_ext_pytorch/')
-            for p in self.bert_encoder_1.parameters():
+            self.bert_encoder = BertModel.from_pretrained('transformer_cpt/bert/')
+            # self.xlnet_encoder = XLNetModel.from_pretrained('transformer_cpt/chinese_xlnet_base_pytorch')
+            self.bert_encoder_wwm = BertModel.from_pretrained('transformer_cpt/chinese_roberta_wwm_ext_pytorch/')
+            for p in self.bert_encoder.parameters():
                 p.requires_grad = False
-            for p in self.bert_encoder_2.parameters():
+            # for p in self.xlnet_encoder.parameters():
+            #     p.requires_grad = False
+            for p in self.bert_encoder_wwm.parameters():
                 p.requires_grad = False
         if self.gpu:
             self.word_embedding = self.word_embedding.cuda(self.device)
@@ -78,10 +81,11 @@ class GazLSTM(nn.Module):
             self.hidden2tag = self.hidden2tag.cuda(self.device)
             self.crf = self.crf.cuda(self.device)
             if self.use_bert:
-                self.bert_encoder_1 = self.bert_encoder_1.cuda(self.device)
-                self.bert_encoder_2 = self.bert_encoder_2.cuda(self.device)
+                self.bert_encoder = self.bert_encoder.cuda(self.device)
+                # self.xlnet_encoder = self.xlnet_encoder.cuda(self.device)
+                self.bert_encoder_wwm = self.bert_encoder_wwm.cuda(self.device)
 
-    def get_tags(self, word_inputs, biword_inputs, mask, word_seq_lengths, batch_bert, bert_mask):
+    def get_tags(self, word_inputs, biword_inputs, mask, word_seq_lengths, batch_bert, batch_xlnet, bert_mask):
 
         batch_size = word_inputs.size()[0]
         seq_len = word_inputs.size()[1]
@@ -102,10 +106,13 @@ class GazLSTM(nn.Module):
         if self.use_bert:
             seg_id = torch.zeros(bert_mask.size()).long().cuda(self.device) if self.gpu else torch.zeros(
                 bert_mask.size()).long()
-            outputs_1 = self.bert_encoder_1(batch_bert, bert_mask, seg_id)
+            outputs_1 = self.bert_encoder(batch_bert, bert_mask, seg_id)
             outputs_1 = outputs_1[0][:, 1:-1, :]
 
-            outputs_2 = self.bert_encoder_2(batch_bert, bert_mask, seg_id)
+            # outputs_1 = self.xlnet_encoder(batch_xlnet)
+            # outputs_1 = outputs_1[0]
+
+            outputs_2 = self.bert_encoder_wwm(batch_bert, bert_mask, seg_id)
             outputs_2 = outputs_2[0][:, 1:-1, :]
 
             word_input_cat = torch.cat([word_input_cat, outputs_1, outputs_2], dim=-1)
@@ -117,18 +124,19 @@ class GazLSTM(nn.Module):
         return tags
 
     def neg_log_likelihood_loss(self, word_inputs, biword_inputs, word_seq_lengths, mask, batch_label, batch_bert,
+                                batch_xlnet,
                                 bert_mask):
 
-        tags = self.get_tags(word_inputs, biword_inputs, mask, word_seq_lengths, batch_bert, bert_mask)
+        tags = self.get_tags(word_inputs, biword_inputs, mask, word_seq_lengths, batch_bert, batch_xlnet, bert_mask)
 
         total_loss = self.crf.neg_log_likelihood_loss(tags, mask, batch_label)
         scores, tag_seq = self.crf._viterbi_decode(tags, mask)
 
         return total_loss, tag_seq
 
-    def forward(self, word_inputs, biword_inputs, word_seq_lengths, mask, batch_bert, bert_mask):
+    def forward(self, word_inputs, biword_inputs, word_seq_lengths, mask, batch_bert, batch_xlnet, bert_mask):
 
-        tags = self.get_tags(word_inputs, biword_inputs, mask, word_seq_lengths, batch_bert, bert_mask)
+        tags = self.get_tags(word_inputs, biword_inputs, mask, word_seq_lengths, batch_bert, batch_xlnet, bert_mask)
 
         scores, tag_seq = self.crf._viterbi_decode(tags, mask)
 
