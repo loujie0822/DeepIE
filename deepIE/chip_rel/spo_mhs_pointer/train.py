@@ -1,4 +1,6 @@
 # _*_ coding:utf-8 _*_
+import codecs
+import json
 import logging
 import random
 import sys
@@ -45,6 +47,8 @@ class Trainer(object):
             self.model = bert.MHSNet(args)
 
         self.model.to(self.device)
+        if args.train_mode != "train":
+            self.resume(args)
 
         if self.n_gpu > 1:
             logging.info('total gpu num is {}'.format(self.n_gpu))
@@ -161,9 +165,11 @@ class Trainer(object):
                         u"step {} / {} of epoch {}, train/loss: {}\tner:{}\trel:{}".format(step, len(
                             self.data_loader_choice["train"]),
                                                                                            epoch,
-                                                                                           round(current_loss*100,5),
-                                                                                           round(current_crf_loss*100,5),
-                                                                                           round(current_selection_loss*100,5)))
+                                                                                           round(current_loss, 5),
+                                                                                           round(current_crf_loss, 5),
+                                                                                           round(
+                                                                                               current_selection_loss,
+                                                                                               5)))
                     global_loss, global_crf_loss, global_selection_loss = 0.0, 0.0, 0.0
 
             res_dev = self.eval_data_set("dev")
@@ -206,10 +212,9 @@ class Trainer(object):
             self.optimizer.zero_grad()
             return loss, crf_loss, selection_loss
         else:
-            p_ids, passage_ids, segment_ids, ent_ids, rel_ids = batch
+            p_ids, passage_ids, segment_ids = batch
             eval_file = self.eval_file_choice[chosen]
-            ent_logits, rel_logits = self.model(passage_ids=passage_ids, segment_ids=segment_ids, ent_ids=ent_ids,
-                                                rel_ids=rel_ids, is_eval=eval)
+            ent_logits, rel_logits = self.model(passage_ids=passage_ids, segment_ids=segment_ids, is_eval=eval)
             answer_dict = self.convert_select_contour(eval_file, p_ids, passage_ids, ent_logits, rel_logits)
             # p_ids, passage_ids, segment_ids , ent_ids, rel_ids = batch
             # eval_file = self.eval_file_choice[chosen]
@@ -235,6 +240,36 @@ class Trainer(object):
         res = self.evaluate(eval_file, answer_dict, chosen)
         self.model.train()
         return res
+
+    def predict_data_set(self, chosen="dev"):
+
+        self.model.eval()
+
+        data_loader = self.data_loader_choice[chosen]
+        eval_file = self.eval_file_choice[chosen]
+        answer_dict = {}
+
+        last_time = time.time()
+        with torch.no_grad():
+            for _, batch in tqdm(enumerate(data_loader), mininterval=5, leave=False, file=sys.stdout):
+                answer_dict_ = self.forward(batch, chosen, eval=True)
+                answer_dict.update(answer_dict_)
+        used_time = time.time() - last_time
+        logging.info('chosen {} took : {} sec'.format(chosen, used_time))
+
+        with codecs.open(self.args.res_path, 'w', 'utf-8') as f:
+            for key, value in answer_dict.items():
+                entity_pred, spo_tuple_lst = value
+                out_put = {}
+                out_put['text'] = eval_file[key].context
+                spo_lst = []
+                for (s, p, o) in spo_tuple_lst:
+                    spo_lst.append({"predicate": p, "subject": s, "object": {"@value": o}})
+                out_put['spo_list'] = spo_lst
+
+                json_str = json.dumps(out_put, ensure_ascii=False)
+                f.write(json_str)
+                f.write('\n')
 
     def show(self, chosen="dev"):
 

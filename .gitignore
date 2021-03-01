@@ -31,4 +31,5 @@ Pipfile
 *.bak
 
 
-
+transformer_cpt/
+transformer_cpt_en/

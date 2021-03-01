@@ -211,21 +211,19 @@ class SPODataset(Dataset):
                 batch_token_ids.append(token_ids)
                 batch_segment_ids.append(segment_ids)
 
-                ent_label_ids = np.zeros((len(token_ids), 2), dtype=np.float32)
-                for s in ent_labels:
-                    ent_label_ids[s[0], 0] = 1
-                    ent_label_ids[s[1], 1] = 1
+                if self.is_train:
+                    ent_label_ids = np.zeros((len(token_ids), 2), dtype=np.float32)
+                    for s in ent_labels:
+                        ent_label_ids[s[0], 0] = 1
+                        ent_label_ids[s[1], 1] = 1
 
-                batch_ent_labels.append(ent_label_ids)
-                batch_rel_labels.append(rel_labels)
+                    batch_ent_labels.append(ent_label_ids)
+                    batch_rel_labels.append(rel_labels)
 
             batch_token_ids = sequence_padding(batch_token_ids, is_float=False)
             batch_segment_ids = sequence_padding(batch_segment_ids, is_float=False)
             if not self.is_train:
-                batch_ent_labels = sequence_padding(batch_ent_labels, padding=np.zeros(2), is_float=True)
-                batch_rel_labels = select_padding(batch_token_ids, batch_rel_labels, is_float=True,
-                                                  class_num=len(self.spo_config), use_bert=True)
-                return p_ids, batch_token_ids, batch_segment_ids, batch_ent_labels, batch_rel_labels
+                return p_ids, batch_token_ids, batch_segment_ids
             else:
                 batch_ent_labels = sequence_padding(batch_ent_labels, padding=np.zeros(2), is_float=True)
                 batch_rel_labels = select_padding(batch_token_ids, batch_rel_labels, is_float=True,
