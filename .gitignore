@@ -14,6 +14,7 @@ drug_jointed_bies/
 agumentNER/
 instance/
 data/
+res/
 cpt/
 fastNLP/
 shell/
