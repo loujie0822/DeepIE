@@ -43,7 +43,3 @@ class Gazetteer:
 
     def size(self):
         return len(self.ent2type)
-
-
-
-

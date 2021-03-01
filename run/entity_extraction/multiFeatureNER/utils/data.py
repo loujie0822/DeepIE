@@ -14,7 +14,7 @@ NULLKEY = "-null-"
 
 class Data:
     def __init__(self):
-        self.MAX_SENTENCE_LENGTH = 1000
+        self.MAX_SENTENCE_LENGTH = 400
         self.MAX_WORD_LENGTH = -1
         self.number_normalized = True
         self.norm_word_emb = True
@@ -25,7 +25,7 @@ class Data:
         self.biword_alphabet = Alphabet('biword', min_freq=self.min_freq)
         self.label_alphabet = Alphabet('label', True)
         self.device = 0
-        self.transfer=False
+        self.transfer = False
 
         self.biword_count = {}
 
@@ -45,6 +45,7 @@ class Data:
         self.dev_split_index = []
 
         self.use_bigram = True
+        self.use_bert = False
         self.word_emb_dim = 50
         self.biword_emb_dim = 50
 
@@ -80,6 +81,7 @@ class Data:
         print("     MAX   WORD   LENGTH: %s" % (self.MAX_WORD_LENGTH))
         print("     Number   normalized: %s" % (self.number_normalized))
         print("     Use          bigram: %s" % (self.use_bigram))
+        print("     Use          bert  : %s" % (self.use_bert))
         print("     Word  alphabet size: %s" % (self.word_alphabet_size))
         print("     Biword alphabet size: %s" % (self.biword_alphabet_size))
         print("     Label alphabet size: %s" % (self.label_alphabet_size))
@@ -132,7 +134,7 @@ class Data:
         self.fix_alphabet()
         print("Refresh label alphabet finished: old:%s -> new:%s" % (old_size, self.label_alphabet_size))
 
-    def build_alphabet(self, input_file,only_label=False,use_label=True):
+    def build_alphabet(self, input_file, only_label=False, use_label=True):
         in_lines = open(input_file, 'r', encoding="utf-8").readlines()
         seqlen = 0
         for idx in tqdm(range(len(in_lines))):

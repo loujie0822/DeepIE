@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from transformers import AlbertModel
-from transformers import AlbertPreTrainedModel
+from transformers.modeling_albert import AlbertPreTrainedModel
 
 from layers.encoders.transformers.bert.layernorm import ConditionalLayerNorm
 from utils.data_util import batch_gather

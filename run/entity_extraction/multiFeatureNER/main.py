@@ -164,9 +164,9 @@ def evaluate(data, model, name):
 
             if not instance:
                 continue
-            batch_word, batch_biword, batch_wordlen, batch_label, mask, batch_bert, bert_mask = batchify_with_label(
+            batch_word, batch_biword, batch_wordlen, batch_label, mask, batch_bert, batch_xlnet, bert_mask = batchify_with_label(
                 instance, data.HP_gpu, data.device)
-            tag_seq = model(batch_word, batch_biword, batch_wordlen, mask, batch_bert, bert_mask)
+            tag_seq = model(batch_word, batch_biword, batch_wordlen, mask, batch_bert, batch_xlnet, bert_mask)
 
             pred_label, gold_label = recover_label(tag_seq, batch_label, mask, data.label_alphabet)
             pred_results += pred_label
@@ -198,6 +198,7 @@ def batchify_with_label(input_batch_list, gpu, device):
     labels = [sent[2] for sent in input_batch_list]
     ### bert tokens
     bert_ids = [sent[3] for sent in input_batch_list]
+    xlnet_ids = [sent[4] for sent in input_batch_list]
 
     word_seq_lengths = torch.LongTensor(list(map(len, words)))
     max_seq_len = word_seq_lengths.max()
@@ -207,10 +208,11 @@ def batchify_with_label(input_batch_list, gpu, device):
     mask = autograd.Variable(torch.zeros((batch_size, max_seq_len))).byte()
     ### bert seq tensor
     bert_seq_tensor = autograd.Variable(torch.zeros((batch_size, max_seq_len + 2))).long()
+    xlnet_seq_tensor = autograd.Variable(torch.zeros((batch_size, max_seq_len))).long()
     bert_mask = autograd.Variable(torch.zeros((batch_size, max_seq_len + 2))).long()
 
-    for b, (seq, biseq, label, seqlen, bert_id) in enumerate(
-            zip(words, biwords, labels, word_seq_lengths, bert_ids)):
+    for b, (seq, biseq, label, seqlen, bert_id, xlnet_id) in enumerate(
+            zip(words, biwords, labels, word_seq_lengths, bert_ids, xlnet_ids)):
         word_seq_tensor[b, :seqlen] = torch.LongTensor(seq)
         biword_seq_tensor[b, :seqlen] = torch.LongTensor(biseq)
         label_seq_tensor[b, :seqlen] = torch.LongTensor(label)
@@ -218,6 +220,7 @@ def batchify_with_label(input_batch_list, gpu, device):
         bert_mask[b, :seqlen + 2] = torch.LongTensor([1] * int(seqlen + 2))
         ##bert
         bert_seq_tensor[b, :seqlen + 2] = torch.LongTensor(bert_id)
+        xlnet_seq_tensor[b, :seqlen] = torch.LongTensor(xlnet_id)
 
     if gpu:
         word_seq_tensor = word_seq_tensor.cuda(device)
@@ -226,9 +229,10 @@ def batchify_with_label(input_batch_list, gpu, device):
         label_seq_tensor = label_seq_tensor.cuda(device)
         mask = mask.cuda(device)
         bert_seq_tensor = bert_seq_tensor.cuda(device)
+        xlnet_seq_tensor = xlnet_seq_tensor.cuda(device)
         bert_mask = bert_mask.cuda(device)
 
-    return word_seq_tensor, biword_seq_tensor, word_seq_lengths, label_seq_tensor, mask, bert_seq_tensor, bert_mask
+    return word_seq_tensor, biword_seq_tensor, word_seq_lengths, label_seq_tensor, mask, bert_seq_tensor, xlnet_seq_tensor, bert_mask
 
 
 def train(data, save_model_dir, seg=True, debug=False, transfer=False):
@@ -248,8 +252,7 @@ def train(data, save_model_dir, seg=True, debug=False, transfer=False):
             del model_dict['hidden2tag.weight']
             del model_dict['hidden2tag.bias']
             del model_dict['crf.transitions']
-            model.load_state_dict(model_dict,strict=False)
-
+            model.load_state_dict(model_dict, strict=False)
 
     print("finish building model.")
 
@@ -310,12 +313,12 @@ def train(data, save_model_dir, seg=True, debug=False, transfer=False):
             if not instance:
                 continue
 
-            batch_word, batch_biword, batch_wordlen, batch_label, mask, batch_bert, bert_mask = batchify_with_label(
+            batch_word, batch_biword, batch_wordlen, batch_label, mask, batch_bert, batch_xlnet, bert_mask = batchify_with_label(
                 instance, data.HP_gpu, data.device)
 
             instance_count += 1
             loss, tag_seq = model.neg_log_likelihood_loss(batch_word, batch_biword, batch_wordlen, mask,
-                                                          batch_label, batch_bert, bert_mask)
+                                                          batch_label, batch_bert, batch_xlnet, bert_mask)
 
             right, whole = predict_check(tag_seq, batch_label, mask)
             right_token += right
@@ -324,7 +327,7 @@ def train(data, save_model_dir, seg=True, debug=False, transfer=False):
             total_loss += loss.data
             batch_loss += loss
 
-            if end % 500 == 0:
+            if end % 200 == 0:
                 temp_time = time.time()
                 temp_cost = temp_time - temp_start
                 temp_start = temp_time
@@ -470,7 +473,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_char', dest='use_char', action='store_true', default=False)
     # parser.set_defaults(use_biword=False)
     parser.add_argument('--use_count', action='store_true', default=True)
-    parser.add_argument('--use_bert', action='store_true', default=True)
+    parser.add_argument('--use_bert', action='store_true', default=False)
 
     args = parser.parse_args()
 
@@ -520,7 +523,7 @@ if __name__ == '__main__':
             data.warm_up = args.warm_up
             data.device = args.device
             data.bert_finetune = args.bert_finetune
-            data.transfer=args.transfer
+            data.transfer = args.transfer
 
             data.HP_lstm_layer = args.lstm_layer
 
@@ -559,7 +562,7 @@ if __name__ == '__main__':
         data.show_data_summary()
         print('data.use_biword=', data.use_bigram)
         print('data.HP_batch_size=', data.HP_batch_size)
-        train(data, save_model_dir, seg, debug=False,transfer=data.transfer)
+        train(data, save_model_dir, seg, debug=False, transfer=data.transfer)
     elif status == 'test':
         print('Loading processed data')
         with open(save_data_name, 'rb') as fp:
