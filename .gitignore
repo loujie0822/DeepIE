@@ -10,7 +10,6 @@ settings.py
 #models/spo_net/multi_pointer_net.py
 #run/spo_extraction
 #run/attribute_extract/drug_mpn
-#drug_jointed_bies/
 
 data/
 res/
